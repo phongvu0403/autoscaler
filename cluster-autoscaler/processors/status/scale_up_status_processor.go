@@ -20,6 +20,7 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/autoscaler/cluster-autoscaler/processors/nodegroupset"
 	"k8s.io/autoscaler/cluster-autoscaler/utils/errors"
+	kube_client "k8s.io/client-go/kubernetes"
 
 	"k8s.io/autoscaler/cluster-autoscaler/context"
 )
@@ -78,7 +79,7 @@ type Reasons interface {
 
 // ScaleUpStatusProcessor processes the status of the cluster after a scale-up.
 type ScaleUpStatusProcessor interface {
-	Process(context *context.AutoscalingContext, status *ScaleUpStatus)
+	Process(context *context.AutoscalingContext, status *ScaleUpStatus, kubeclient kube_client.Interface)
 	CleanUp()
 }
 

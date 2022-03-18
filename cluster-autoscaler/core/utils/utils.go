@@ -348,7 +348,7 @@ func GetIDCluster(vpcID string, accessToken string, clusterID string) string {
 	if err != nil {
 		log.Println(err)
 	}
-	log.Println(resp)
+	//log.Println(resp)
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Fatalln(err)
@@ -371,7 +371,7 @@ func GetIDCluster(vpcID string, accessToken string, clusterID string) string {
 	}
 
 	defer resp.Body.Close()
-	fmt.Println("ID is: ", id)
+	//fmt.Println("ID is: ", id)
 	return id
 }
 
@@ -387,7 +387,7 @@ func CheckStatusCluster(vpcID string, accessToken string, clusterID string) bool
 	if err != nil {
 		log.Println(err)
 	}
-	log.Println(resp)
+	//log.Println(resp)
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Fatalln(err)
@@ -414,6 +414,6 @@ func CheckStatusCluster(vpcID string, accessToken string, clusterID string) bool
 	}
 
 	defer resp.Body.Close()
-	fmt.Println("isSucceed is: ", isSucceeded)
+	//fmt.Println("isSucceed is: ", isSucceeded)
 	return isSucceeded
 }

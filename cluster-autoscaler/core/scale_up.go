@@ -22,6 +22,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
+	"math"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,15 +41,8 @@ import (
 	"k8s.io/autoscaler/cluster-autoscaler/utils/klogx"
 	"k8s.io/autoscaler/cluster-autoscaler/utils/taints"
 	kube_client "k8s.io/client-go/kubernetes"
-	schedulerframework "k8s.io/kubernetes/pkg/scheduler/framework"
-	"log"
-	"math"
-	"net/http"
-	"strconv"
-	"strings"
-	"time"
-
 	klog "k8s.io/klog/v2"
+	schedulerframework "k8s.io/kubernetes/pkg/scheduler/framework"
 )
 
 type scaleUpResourcesLimits map[string]int64
@@ -327,7 +327,7 @@ func CalculateNewNodeScaledUp(kubeclient kube_client.Interface, unschedulablePod
 	var numberNodeScaledUpFloat float64 = 0.0
 	for _, pod := range podsRemainUnschedulable {
 		events, _ := kubeclient.CoreV1().Events(pod.Pod.Namespace).List(ctx.TODO(), metav1.ListOptions{FieldSelector: "involvedObject.name=" + pod.Pod.Name, TypeMeta: metav1.TypeMeta{Kind: "Pod"}})
-		fmt.Println("first event of ", pod.Pod.Name, " is: ", events.Items[0].Message)
+		//fmt.Println("first event of ", pod.Pod.Name, " is: ", events.Items[0].Message)
 
 		if strings.Contains(events.Items[0].Message, "Insufficient") == false {
 			continue
@@ -339,8 +339,8 @@ func CalculateNewNodeScaledUp(kubeclient kube_client.Interface, unschedulablePod
 		}
 	}
 
-	fmt.Println("total CPU Pod request: ", totalCPUrequest)
-	fmt.Println("total Memory Pod request: ", totalMemoryRequest)
+	//fmt.Println("total CPU Pod request: ", totalCPUrequest)
+	//fmt.Println("total Memory Pod request: ", totalMemoryRequest)
 	var cpus int64
 	var memory int64
 	for _, node := range nodes {
@@ -350,15 +350,15 @@ func CalculateNewNodeScaledUp(kubeclient kube_client.Interface, unschedulablePod
 		}
 		continue
 	}
-	fmt.Println("worker CPU: ", cpus)
-	fmt.Println("worker Memory: ", memory)
+	//fmt.Println("worker CPU: ", cpus)
+	//fmt.Println("worker Memory: ", memory)
 	numberNodeScaledUpFloat = float64(totalCPUrequest) / (float64(cpus) * 1000)
 	if numberNodeScaledUpFloat < (float64(totalMemoryRequest) / (float64(memory) * 1000)) {
 		numberNodeScaledUpFloat = (float64(totalMemoryRequest) / (float64(memory) * 1000))
 	}
-	fmt.Println("numberNodeScaledUpFloat is: ", numberNodeScaledUpFloat)
+	//fmt.Println("numberNodeScaledUpFloat is: ", numberNodeScaledUpFloat)
 	numberNodeScaledUpInt := int(math.Ceil(numberNodeScaledUpFloat))
-	fmt.Println("numberNodeScaledUpInt is: ", numberNodeScaledUpInt)
+	//fmt.Println("numberNodeScaledUpInt is: ", numberNodeScaledUpInt)
 	return numberNodeScaledUpInt
 }
 
@@ -512,15 +512,22 @@ func ScaleUp(context *context.AutoscalingContext, processors *ca_processors.Auto
 	}
 	if (numberWorkerNode + numberNodeScaleUp) > utils.GetMaxSizeNodeGroup(kubeclient) {
 		klog.V(4).Infof("Skipping node group - max size reached")
-		fmt.Println("scaling up cannot perform because max node group size reached")
+		fmt.Println("Max node group size reached")
 		klog.V(4).Infof("You need to increase max group size")
 		fmt.Println("You need to increase max group size")
 		numberNodeScaleUp = utils.GetMaxSizeNodeGroup(kubeclient) - numberWorkerNode
-		fmt.Println("scaling up ", numberNodeScaleUp, " node")
-		fmt.Println("waiting for job running in AWX successfully")
+		//fmt.Println("scaling up ", numberNodeScaleUp, " node")
+		//fmt.Println("waiting for job running in AWX successfully")
+		if numberNodeScaleUp == 0 {
+			return &status.ScaleUpStatus{
+				Result:                  status.ScaleUpNotNeeded,
+				PodsRemainUnschedulable: getRemainingPods(podEquivalenceGroups, skippedNodeGroups),
+				//ConsideredNodeGroups:    nodeGroups,
+			}, nil
+		}
 	}
 	fmt.Println("scaling up ", numberNodeScaleUp, " node")
-	fmt.Println("waiting for job running in AWX successfully")
+	//fmt.Println("waiting for job running in AWX successfully")
 	performScaleUp(vpcID, accessToken, numberNodeScaleUp, idCluster, clusterIDPortal)
 	for {
 		time.Sleep(30 * time.Second)
@@ -875,7 +882,7 @@ func performScaleUp(vpcID string, accessToken string, workerCount int, idCluster
 		log.Println("Error while reading the response bytes:", err)
 	}
 	log.Println(string([]byte(body)))
-	fmt.Println("response Status:", resp.Status)
-	fmt.Println("response Headers:", resp.Header)
-	fmt.Println("response Body:", string(body))
+	// fmt.Println("response Status:", resp.Status)
+	// fmt.Println("response Headers:", resp.Header)
+	// fmt.Println("response Body:", string(body))
 }

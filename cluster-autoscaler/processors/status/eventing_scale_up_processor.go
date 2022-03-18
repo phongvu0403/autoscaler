@@ -17,12 +17,12 @@ limitations under the License.
 package status
 
 import (
+	ctx "context"
 	"fmt"
-	"strings"
-
-	klog "k8s.io/klog/v2"
-
 	apiv1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kube_client "k8s.io/client-go/kubernetes"
+	"strings"
 
 	"k8s.io/autoscaler/cluster-autoscaler/context"
 )
@@ -34,22 +34,22 @@ type EventingScaleUpStatusProcessor struct{}
 
 // Process processes the state of the cluster after a scale-up by emitting
 // relevant events for pods depending on their post scale-up status.
-func (p *EventingScaleUpStatusProcessor) Process(context *context.AutoscalingContext, status *ScaleUpStatus) {
-	//consideredNodeGroupsMap := nodeGroupListToMapById(status.ConsideredNodeGroups)
-	if status.Result != ScaleUpSuccessful && status.Result != ScaleUpError {
-		for _, noScaleUpInfo := range status.PodsRemainUnschedulable {
-			context.Recorder.Event(noScaleUpInfo.Pod, apiv1.EventTypeNormal, "NotTriggerScaleUp",
-				fmt.Sprintf("pod didn't trigger scale-up: %s",
-					ReasonsMessage(noScaleUpInfo)))
-		}
-	} else {
-		klog.V(4).Infof("Skipping event processing for unschedulable pods since there is a" +
-			" ScaleUp attempt this loop")
-	}
-	if len(status.ScaleUpInfos) > 0 {
-		for _, pod := range status.PodsTriggeredScaleUp {
-			context.Recorder.Eventf(pod, apiv1.EventTypeNormal, "TriggeredScaleUp",
-				"pod triggered scale-up: %v", status.ScaleUpInfos)
+func (p *EventingScaleUpStatusProcessor) Process(context *context.AutoscalingContext, status *ScaleUpStatus, kubeclient kube_client.Interface) {
+	//fmt.Println("test test")
+	//fmt.Println("PodsRemainUnschedulable are: ")
+	//for _, pod := range status.PodsRemainUnschedulable {
+	//	fmt.Println(pod.Pod.Name)
+	//}
+	for _, pod := range status.PodsRemainUnschedulable {
+		events, _ := kubeclient.CoreV1().Events(pod.Pod.Namespace).List(ctx.TODO(), metav1.ListOptions{FieldSelector: "involvedObject.name=" + pod.Pod.Name, TypeMeta: metav1.TypeMeta{Kind: "Pod"}})
+		//fmt.Println("first event of ", pod.Pod.Name, " is: ", events.Items[0].Message)
+
+		if strings.Contains(events.Items[0].Message, "Insufficient") == false {
+			context.Recorder.Event(pod.Pod, apiv1.EventTypeNormal, "NotTriggerScaleUp",
+				fmt.Sprintf("pod didn't trigger scale-up"))
+		} else {
+			context.Recorder.Event(pod.Pod, apiv1.EventTypeNormal, "TriggerScaleUp",
+				fmt.Sprintf("pod trigger scale-up"))
 		}
 	}
 }
@@ -87,11 +87,3 @@ func ReasonsMessage(noScaleUpInfo NoScaleUpInfo) string {
 	}
 	return strings.Join(messages, ", ")
 }
-
-//func nodeGroupListToMapById(nodeGroups []cloudprovider.NodeGroup) map[string]cloudprovider.NodeGroup {
-//	result := make(map[string]cloudprovider.NodeGroup)
-//	for _, nodeGroup := range nodeGroups {
-//		result[nodeGroup.Id()] = nodeGroup
-//	}
-//	return result
-//}

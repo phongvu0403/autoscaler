@@ -18,8 +18,9 @@ package core
 
 import (
 	"fmt"
-	kube_client "k8s.io/client-go/kubernetes"
 	"time"
+
+	kube_client "k8s.io/client-go/kubernetes"
 
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -231,15 +232,15 @@ func (a *StaticAutoscaler) RunOnce(currentTime time.Time, kubeclient kube_client
 	//fmt.Println(scheduledPodLister.List())
 	pdbLister := a.PodDisruptionBudgetLister()
 
-	fmt.Println("pdbLister is")
-	fmt.Println(pdbLister.List())
+	//fmt.Println("pdbLister is")
+	//fmt.Println(pdbLister.List())
 
 	scaleDown := a.scaleDown
 
-	fmt.Println("unneededNodesList is")
-	for _, node := range scaleDown.unneededNodesList {
-		fmt.Println(node.Name)
-	}
+	//fmt.Println("unneededNodesList is")
+	//for _, node := range scaleDown.unneededNodesList {
+	//	fmt.Println(node.Name)
+	//}
 
 	autoscalingContext := a.AutoscalingContext
 
@@ -249,14 +250,14 @@ func (a *StaticAutoscaler) RunOnce(currentTime time.Time, kubeclient kube_client
 
 	//// Get nodes and pods currently living on cluster
 	allNodes, readyNodes, typedErr := a.obtainNodeLists()
-	fmt.Println("allNodes are")
-	for _, node := range allNodes {
-		fmt.Println(node.Name)
-	}
-	fmt.Println("readyNodes are")
-	for _, node := range readyNodes {
-		fmt.Println(node.Name)
-	}
+	//fmt.Println("allNodes are")
+	//for _, node := range allNodes {
+	//	fmt.Println(node.Name)
+	//}
+	//fmt.Println("readyNodes are")
+	//for _, node := range readyNodes {
+	//	fmt.Println(node.Name)
+	//}
 	if typedErr != nil {
 		klog.Errorf("Failed to get node list: %v", typedErr)
 		return typedErr
@@ -280,17 +281,17 @@ func (a *StaticAutoscaler) RunOnce(currentTime time.Time, kubeclient kube_client
 
 	// Update cluster resource usage metrics
 	coresTotal, memoryTotal := calculateCoresMemoryTotal(allNodes, currentTime)
-	fmt.Println("coresTotal is: ", coresTotal)
-	fmt.Println("memoryTotal is: ", memoryTotal)
+	//fmt.Println("coresTotal is: ", coresTotal)
+	//fmt.Println("memoryTotal is: ", memoryTotal)
 	metrics.UpdateClusterCPUCurrentCores(coresTotal)
 	metrics.UpdateClusterMemoryCurrentBytes(memoryTotal)
 
 	daemonsets, err := a.ListerRegistry.DaemonSetLister().List(labels.Everything())
 	fmt.Println()
-	fmt.Println("daemonsets are:")
-	for _, ds := range daemonsets {
-		fmt.Println(ds.Name)
-	}
+	//fmt.Println("daemonsets are:")
+	//for _, ds := range daemonsets {
+	//	fmt.Println(ds.Name)
+	//}
 	if err != nil {
 		klog.Errorf("Failed to get daemonset list: %v", err)
 		return errors.ToAutoscalerError(errors.ApiCallError, err)
@@ -358,7 +359,7 @@ func (a *StaticAutoscaler) RunOnce(currentTime time.Time, kubeclient kube_client
 		// This deferred processor execution allows the processors to handle a situation when a scale-(up|down)
 		// wasn't even attempted because e.g. the iteration exited earlier.
 		if !scaleUpStatusProcessorAlreadyCalled && a.processors != nil && a.processors.ScaleUpStatusProcessor != nil {
-			a.processors.ScaleUpStatusProcessor.Process(a.AutoscalingContext, scaleUpStatus)
+			a.processors.ScaleUpStatusProcessor.Process(a.AutoscalingContext, scaleUpStatus, kubeclient)
 		}
 		if !scaleDownStatusProcessorAlreadyCalled && a.processors != nil && a.processors.ScaleDownStatusProcessor != nil {
 			scaleDownStatus.SetUnremovableNodesInfo(scaleDown.unremovableNodeReasons, scaleDown.nodeUtilizationMap)
@@ -416,10 +417,10 @@ func (a *StaticAutoscaler) RunOnce(currentTime time.Time, kubeclient kube_client
 	metrics.UpdateLastTime(metrics.Autoscaling, time.Now())
 
 	unschedulablePods, err := unschedulablePodLister.List()
-	fmt.Println("unschedulablePods are: ")
-	for _, pod := range unschedulablePods {
-		fmt.Println(pod.Name)
-	}
+	//fmt.Println("unschedulablePods are: ")
+	//for _, pod := range unschedulablePods {
+	//	fmt.Println(pod.Name)
+	//}
 	if err != nil {
 		klog.Errorf("Failed to list unscheduled pods: %v", err)
 		return errors.ToAutoscalerError(errors.ApiCallError, err)
@@ -458,11 +459,11 @@ func (a *StaticAutoscaler) RunOnce(currentTime time.Time, kubeclient kube_client
 	//}
 
 	l, err := a.ClusterSnapshot.NodeInfos().List()
-	fmt.Println()
-	fmt.Println("Nodes in Cluster Snapshot are: ")
-	for _, list := range l {
-		fmt.Println(list.Node().Name)
-	}
+	//fmt.Println()
+	//fmt.Println("Nodes in Cluster Snapshot are: ")
+	//for _, list := range l {
+	//	fmt.Println(list.Node().Name)
+	//}
 	if err != nil {
 		klog.Errorf("Unable to fetch ClusterNode List for Debugging Snapshot, %v", err)
 	} else {
@@ -470,33 +471,30 @@ func (a *StaticAutoscaler) RunOnce(currentTime time.Time, kubeclient kube_client
 	}
 
 	unschedulablePodsToHelp, _ := a.processors.PodListProcessor.Process(a.AutoscalingContext, unschedulablePods)
-	fmt.Println()
-	fmt.Println("unschedulablePodsToHelp are: ")
-	for _, pod := range unschedulablePodsToHelp {
-		fmt.Println(pod.Name)
-	}
+	//fmt.Println()
+	//fmt.Println("unschedulablePodsToHelp are: ")
+	//for _, pod := range unschedulablePodsToHelp {
+	//	fmt.Println(pod.Name)
+	//}
 
 	// finally, filter out pods that are too "young" to safely be considered for a scale-up (delay is configurable)
 	unschedulablePodsToHelp = a.filterOutYoungPods(unschedulablePodsToHelp, currentTime)
-	fmt.Println()
-	fmt.Println("filter out unschedulablePodsToHelp are: ")
-	for _, pod := range unschedulablePodsToHelp {
-		fmt.Println(pod.Name)
-	}
-	fmt.Println()
-	fmt.Println("Max node total is: ", core_utils.GetMaxSizeNodeGroup(kubeclient))
-	fmt.Println("Min node total is: ", core_utils.GetMinSizeNodeGroup(kubeclient))
-	fmt.Println("Access Token FPTCloud is: ", core_utils.GetAccessToken(kubeclient))
-	fmt.Println("VPC ID of customer is: ", core_utils.GetVPCId(kubeclient))
+	//fmt.Println()
+	//fmt.Println("filter out unschedulablePodsToHelp are: ")
+	//for _, pod := range unschedulablePodsToHelp {
+	//	fmt.Println(pod.Name)
+	//}
+	//fmt.Println()
+	//fmt.Println("Max node total is: ", core_utils.GetMaxSizeNodeGroup(kubeclient))
+	//fmt.Println("Min node total is: ", core_utils.GetMinSizeNodeGroup(kubeclient))
+	//fmt.Println("Access Token FPTCloud is: ", core_utils.GetAccessToken(kubeclient))
+	//fmt.Println("VPC ID of customer is: ", core_utils.GetVPCId(kubeclient))
 	if len(unschedulablePodsToHelp) == 0 {
 		scaleUpStatus.Result = status.ScaleUpNotNeeded
 		klog.V(1).Info("No unschedulable pods")
 
 		fmt.Println("No need Scale up")
 
-	} else if core_utils.GetMaxSizeNodeGroup(kubeclient) > 0 && len(readyNodes) >= core_utils.GetMaxSizeNodeGroup(kubeclient) {
-		scaleUpStatus.Result = status.ScaleUpNoOptionsAvailable
-		klog.V(1).Info("Max total nodes in cluster reached")
 	} else if allPodsAreNew(unschedulablePodsToHelp, currentTime) {
 		// The assumption here is that these pods have been created very recently and probably there
 		// is more pods to come. In theory we could check the newest pod time but then if pod were created
@@ -519,7 +517,7 @@ func (a *StaticAutoscaler) RunOnce(currentTime time.Time, kubeclient kube_client
 		metrics.UpdateDurationFromStart(metrics.ScaleUp, scaleUpStart)
 
 		if a.processors != nil && a.processors.ScaleUpStatusProcessor != nil {
-			a.processors.ScaleUpStatusProcessor.Process(autoscalingContext, scaleUpStatus)
+			a.processors.ScaleUpStatusProcessor.Process(autoscalingContext, scaleUpStatus, kubeclient)
 			scaleUpStatusProcessorAlreadyCalled = true
 		}
 
@@ -535,18 +533,18 @@ func (a *StaticAutoscaler) RunOnce(currentTime time.Time, kubeclient kube_client
 		}
 	}
 
-	fmt.Println()
-	fmt.Println("ScaleDownEnabled is: ", a.ScaleDownEnabled)
+	//fmt.Println()
+	//fmt.Println("ScaleDownEnabled is: ", a.ScaleDownEnabled)
 
 	if a.ScaleDownEnabled {
 		pdbs, err := pdbLister.List()
 
-		fmt.Println()
-		fmt.Println("PDBs are: ")
+		// fmt.Println()
+		// fmt.Println("PDBs are: ")
 
-		for _, pdb := range pdbs {
-			fmt.Println(pdb.Name)
-		}
+		// for _, pdb := range pdbs {
+		// 	fmt.Println(pdb.Name)
+		// }
 		if err != nil {
 			scaleDownStatus.Result = status.ScaleDownError
 			klog.Errorf("Failed to list pod disruption budgets: %v", err)
@@ -568,41 +566,41 @@ func (a *StaticAutoscaler) RunOnce(currentTime time.Time, kubeclient kube_client
 		// allNodes here, we could use nodes from clusterSnapshot and explicitly filter out upcoming nodes here but it
 		// is of little (if any) benefit.
 
-		fmt.Println()
-		fmt.Println("ScaleDownNodeProcessor is: ")
-		fmt.Println(a.processors.ScaleDownNodeProcessor)
+		//fmt.Println()
+		//fmt.Println("ScaleDownNodeProcessor is: ")
+		//fmt.Println(a.processors.ScaleDownNodeProcessor)
 
 		if a.processors == nil || a.processors.ScaleDownNodeProcessor == nil {
 
-			fmt.Println()
-			fmt.Println("scaleDownCandidates are allNodes")
+			//fmt.Println()
+			//fmt.Println("scaleDownCandidates are allNodes")
 
 			scaleDownCandidates = allNodes
 			podDestinations = allNodes
 		} else {
 			var err errors.AutoscalerError
 
-			fmt.Println()
-			fmt.Println("GetScaleDownCandidates")
+			//fmt.Println()
+			//fmt.Println("GetScaleDownCandidates")
 
 			scaleDownCandidates, err = a.processors.ScaleDownNodeProcessor.GetScaleDownCandidates(
 				autoscalingContext, allNodes, kubeclient)
-			fmt.Println()
-			fmt.Println("ScaleDownCandidates are:")
-			for _, node := range scaleDownCandidates {
-				fmt.Println(node.Name)
-			}
+			//fmt.Println()
+			//fmt.Println("ScaleDownCandidates are:")
+			//for _, node := range scaleDownCandidates {
+			//	fmt.Println(node.Name)
+			//}
 			if err != nil {
 				klog.Error(err)
 				return err
 			}
 			podDestinations, err = a.processors.ScaleDownNodeProcessor.GetPodDestinationCandidates(autoscalingContext, allNodes)
 
-			fmt.Println()
-			fmt.Println("podDestinations are:")
-			for _, node := range podDestinations {
-				fmt.Println(node.Name)
-			}
+			//fmt.Println()
+			//fmt.Println("podDestinations are:")
+			//for _, node := range podDestinations {
+			//	fmt.Println(node.Name)
+			//}
 
 			if err != nil {
 				klog.Error(err)
@@ -631,11 +629,11 @@ func (a *StaticAutoscaler) RunOnce(currentTime time.Time, kubeclient kube_client
 			a.lastScaleDownFailTime.Add(a.ScaleDownDelayAfterFailure).After(currentTime) ||
 			a.lastScaleDownDeleteTime.Add(a.ScaleDownDelayAfterDelete).After(currentTime)
 
-		fmt.Println()
-		fmt.Println("scaleDownInCooldown is: ", scaleDownInCooldown)
-		fmt.Println("lastScaleUpTime is: ", a.lastScaleUpTime)
-		fmt.Println("lastScaleDownFailTime is: ", a.lastScaleDownFailTime)
-		fmt.Println("lastScaleDownDeleteTime is: ", a.lastScaleDownDeleteTime)
+		//fmt.Println()
+		//fmt.Println("scaleDownInCooldown is: ", scaleDownInCooldown)
+		//fmt.Println("lastScaleUpTime is: ", a.lastScaleUpTime)
+		//fmt.Println("lastScaleDownFailTime is: ", a.lastScaleDownFailTime)
+		//fmt.Println("lastScaleDownDeleteTime is: ", a.lastScaleDownDeleteTime)
 
 		// In dry run only utilization is updated
 		calculateUnneededOnly := scaleDownInCooldown || scaleDown.nodeDeletionTracker.IsNonEmptyNodeDeleteInProgress()
@@ -655,8 +653,8 @@ func (a *StaticAutoscaler) RunOnce(currentTime time.Time, kubeclient kube_client
 		} else {
 			klog.V(4).Infof("Starting scale down")
 
-			fmt.Println()
-			fmt.Println("starting scale down")
+			// fmt.Println()
+			// fmt.Println("starting scale down")
 
 			//// We want to delete unneeded Node Groups only if there was no recent scale up,
 			//// and there is no current delete in progress and there was no recent errors.
@@ -673,8 +671,8 @@ func (a *StaticAutoscaler) RunOnce(currentTime time.Time, kubeclient kube_client
 
 			//scaleDownStatus.RemovedNodeGroups = removedNodeGroups
 
-			fmt.Println()
-			fmt.Println("scale down status is: ", scaleDownStatus.Result)
+			// fmt.Println()
+			// fmt.Println("scale down status is: ", scaleDownStatus.Result)
 
 			if scaleDownStatus.Result == status.ScaleDownNodeDeleteStarted {
 				a.lastScaleDownDeleteTime = currentTime

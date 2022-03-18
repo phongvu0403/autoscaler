@@ -22,7 +22,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"k8s.io/autoscaler/cluster-autoscaler/core/utils"
 	"log"
 	"math"
 	"net/http"
@@ -30,6 +29,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"k8s.io/autoscaler/cluster-autoscaler/core/utils"
 
 	"k8s.io/autoscaler/cluster-autoscaler/clusterstate"
 	"k8s.io/autoscaler/cluster-autoscaler/context"
@@ -469,11 +470,11 @@ func (sd *ScaleDown) UpdateUnneededNodes(
 	// Extract cluster state from snapshot for initial analysis
 	allNodeInfos, err := sd.context.ClusterSnapshot.NodeInfos().List()
 
-	fmt.Println()
-	fmt.Println("all Node Infos are: ")
-	for _, info := range allNodeInfos {
-		fmt.Println(info.Node().Name)
-	}
+	// fmt.Println()
+	// fmt.Println("all Node Infos are: ")
+	// for _, info := range allNodeInfos {
+	// 	fmt.Println(info.Node().Name)
+	// }
 
 	if err != nil {
 		// This should never happen, List() returns err only because scheduler interface requires it.
@@ -562,9 +563,9 @@ func (sd *ScaleDown) UpdateUnneededNodes(
 	//Phase2 - check which nodes can be probably removed using fast drain.
 	currentCandidates, currentNonCandidates := sd.chooseCandidates(currentlyUnneededNonEmptyNodes)
 
-	fmt.Println()
-	fmt.Println("current candidate: ", currentCandidates)
-	fmt.Println("current non candidate", currentNonCandidates)
+	// fmt.Println()
+	// fmt.Println("current candidate: ", currentCandidates)
+	// fmt.Println("current non candidate", currentNonCandidates)
 
 	destinations := make([]string, 0, len(destinationNodes))
 	for _, destinationNode := range destinationNodes {
@@ -588,10 +589,10 @@ func (sd *ScaleDown) UpdateUnneededNodes(
 
 	fmt.Println()
 	fmt.Println("number of nodes to Remove is: ", len(nodesToRemove))
-	fmt.Println("node to Remove are: ")
-	for _, node := range nodesToRemove {
-		fmt.Println(node.Node.Name)
-	}
+	// fmt.Println("node to Remove are: ")
+	// for _, node := range nodesToRemove {
+	// 	fmt.Println(node.Node.Name)
+	// }
 
 	additionalCandidatesCount := sd.context.ScaleDownNonEmptyCandidatesCount - len(nodesToRemove)
 	if additionalCandidatesCount > len(currentNonCandidates) {
@@ -851,15 +852,15 @@ func (sd *ScaleDown) TryToScaleDown(
 	nodesWithoutMaster := filterOutMasters(allNodeInfos)
 	nodesWithoutMasterNames := make([]string, 0, len(nodesWithoutMaster))
 
-	fmt.Println()
-	fmt.Println("nodes without master are: ")
+	// fmt.Println()
+	// fmt.Println("nodes without master are: ")
 
-	for _, node := range nodesWithoutMaster {
-		nodesWithoutMasterNames = append(nodesWithoutMasterNames, node.Name)
+	// for _, node := range nodesWithoutMaster {
+	// 	nodesWithoutMasterNames = append(nodesWithoutMasterNames, node.Name)
 
-		fmt.Println(node.Name)
+	// 	fmt.Println(node.Name)
 
-	}
+	// }
 
 	candidateNames := make([]string, 0)
 	//readinessMap := make(map[string]bool)
@@ -1042,9 +1043,9 @@ func (sd *ScaleDown) TryToScaleDown(
 	klog.V(1).Infof("find nodes to remove")
 	fmt.Println()
 	fmt.Println("number of nodes to Remove: ", len(nodesToRemove))
-	for _, node := range nodesToRemove {
-		fmt.Println(node.Node.Name)
-	}
+	//for _, node := range nodesToRemove {
+	//	fmt.Println(node.Node.Name)
+	//}
 	//nodesToRemove = sd.processors.ScaleDownSetProcessor.GetNodesToRemove(sd.context, nodesToRemove, 1)
 	//if len(nodesToRemove) == 0 {
 	//	klog.V(1).Infof("No node to remove")
@@ -1069,12 +1070,12 @@ func (sd *ScaleDown) TryToScaleDown(
 
 	// Starting deletion.
 	nodeDeletionDuration = time.Now().Sub(nodeDeletionStart)
-	fmt.Println("nodeDeletionDuration: ", nodeDeletionDuration)
-	//sd.nodeDeletionTracker.SetNonEmptyNodeDeleteInProgress(true)
-	fmt.Println("scaling down ", len(nodesToRemove), " node")
-	fmt.Println("Wait for running in AWX successfully")
-	fmt.Println("vpcID is: ", vpcID)
-	fmt.Println("access token is: ", accessToken)
+	//fmt.Println("nodeDeletionDuration: ", nodeDeletionDuration)
+	////sd.nodeDeletionTracker.SetNonEmptyNodeDeleteInProgress(true)
+	//fmt.Println("scaling down ", len(nodesToRemove), " node")
+	//fmt.Println("Wait for running in AWX successfully")
+	//fmt.Println("vpcID is: ", vpcID)
+	//fmt.Println("access token is: ", accessToken)
 	performScaleDown(vpcID, accessToken, 1, idCluster, clusterIDPortal)
 	for {
 		time.Sleep(30 * time.Second)
@@ -1579,13 +1580,13 @@ func performScaleDown(vpcID string, token string, workerCount int, idCluster str
 		log.Println(err)
 	}
 	defer resp.Body.Close()
-	log.Println(resp)
+	//log.Println(resp)
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Println("Error while reading the response bytes:", err)
 	}
 	log.Println(string([]byte(body)))
-	fmt.Println("response Status:", resp.Status)
-	fmt.Println("response Headers:", resp.Header)
-	fmt.Println("response Body:", string(body))
+	//fmt.Println("response Status:", resp.Status)
+	//fmt.Println("response Headers:", resp.Header)
+	//fmt.Println("response Body:", string(body))
 }
