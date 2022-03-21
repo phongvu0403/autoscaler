@@ -653,8 +653,8 @@ func (a *StaticAutoscaler) RunOnce(currentTime time.Time, kubeclient kube_client
 		} else {
 			klog.V(4).Infof("Starting scale down")
 
-			// fmt.Println()
-			// fmt.Println("starting scale down")
+			//fmt.Println()
+			//fmt.Println("starting scale down")
 
 			//// We want to delete unneeded Node Groups only if there was no recent scale up,
 			//// and there is no current delete in progress and there was no recent errors.

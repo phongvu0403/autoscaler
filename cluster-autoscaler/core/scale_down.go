@@ -947,12 +947,12 @@ func (sd *ScaleDown) TryToScaleDown(
 		}
 
 		//size := utils.GetNodeGroupSize()
-		minSize := utils.GetMinSizeNodeGroup(kubeclient)
-		if (len(nodesWithoutMasterNames) - len(candidateNames)) <= minSize {
-			klog.V(1).Infof("Skipping %s - node group min size reached", node.Name)
-			fmt.Println("Skipping", node.Name, "node group min size reached")
-			continue
-		}
+		//minSize := utils.GetMinSizeNodeGroup(kubeclient)
+		//if (len(nodesWithoutMasterNames) - len(candidateNames)) <= minSize {
+		//	klog.V(1).Infof("Skipping %s - node group min size reached", node.Name)
+		//	fmt.Println("Skipping", node.Name, "node group min size reached")
+		//	continue
+		//}
 		//
 		//deletionsInProgress := sd.nodeDeletionTracker.GetDeletionsInProgress("")
 		//if size-deletionsInProgress <= min_size {
