@@ -17,15 +17,9 @@ limitations under the License.
 package core
 
 import (
-	"bytes"
 	ctx "context"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"log"
 	"math"
-	"net/http"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -512,7 +506,7 @@ func (sd *ScaleDown) UpdateUnneededNodes(
 		}
 
 		fmt.Println()
-		fmt.Println("Utilization info are: ")
+		fmt.Println("Utilization info is: ")
 		for node, util := range utilizationMap {
 			fmt.Println("Node: ", node, " CPU-Util: ", util.CpuUtil, " MemoryUtil: ", util.MemUtil, " Utilization: ", util.Utilization)
 		}
@@ -537,11 +531,11 @@ func (sd *ScaleDown) UpdateUnneededNodes(
 
 		currentlyUnneededNodeNames = append(currentlyUnneededNodeNames, node.Name)
 
-		fmt.Println()
-		fmt.Println("currentlyUnneededNodeNames are: ")
-		for _, node := range currentlyUnneededNodeNames {
-			fmt.Println(node)
-		}
+		//fmt.Println()
+		//fmt.Println("currentlyUnneededNodeNames are: ")
+		//for _, node := range currentlyUnneededNodeNames {
+		//	fmt.Println(node)
+		//}
 	}
 
 	if skipped > 0 {
@@ -880,7 +874,6 @@ func (sd *ScaleDown) TryToScaleDown(
 	// resourcesWithLimits := resourceLimiter.GetResources()
 	for nodeName, unneededSince := range sd.unneededNodes {
 		klog.V(2).Infof("%s was unneeded for %s", nodeName, currentTime.Sub(unneededSince).String())
-
 		nodeInfo, err := sd.context.ClusterSnapshot.NodeInfos().Get(nodeName)
 		if err != nil {
 			klog.Errorf("Can't retrieve unneeded node %s from snapshot, err: %v", nodeName, err)
@@ -936,7 +929,7 @@ func (sd *ScaleDown) TryToScaleDown(
 		//}
 
 		//unneededTime := time.Duration(0)
-		unneededTime := 1 * time.Minute
+		unneededTime := 4 * time.Minute
 		//if err != nil {
 		//	klog.Errorf("Error trying to get ScaleDownUnneededTime for node %s (in group: %s)", node.Name, nodeGroup.Id())
 		//	continue
@@ -1077,17 +1070,30 @@ func (sd *ScaleDown) TryToScaleDown(
 	//fmt.Println("Wait for running in AWX successfully")
 	//fmt.Println("vpcID is: ", vpcID)
 	//fmt.Println("access token is: ", accessToken)
-	performScaleDown(vpcID, accessToken, 1, idCluster, clusterIDPortal)
-	for {
-		time.Sleep(30 * time.Second)
-		isSucceededStatus := utils.CheckStatusCluster(vpcID, accessToken, clusterIDPortal)
-		fmt.Println("status cluster is SCALING")
-		if isSucceededStatus == true {
-			fmt.Println("status cluster is SUCCEEDED")
-			break
-		}
-	}
 
+	//utils.PerformScaleDown(vpcID, accessToken, 1, idCluster, clusterIDPortal)
+	//for {
+	//	time.Sleep(30 * time.Second)
+	//	isSucceededStatus := utils.CheckStatusCluster(vpcID, accessToken, clusterIDPortal)
+	//	fmt.Println("status of cluster is SCALING")
+	//	if isSucceededStatus == true {
+	//		fmt.Println("status of cluster is SUCCEEDED")
+	//		break
+	//	}
+	//	isErrorStatus := utils.CheckErrorStatusCluster(vpcID, accessToken, clusterIDPortal)
+	//	if isErrorStatus == true {
+	//		utils.PerformScaleDown(vpcID, accessToken, 1, idCluster, clusterIDPortal)
+	//		for {
+	//			time.Sleep(30 * time.Second)
+	//			if utils.CheckStatusCluster(vpcID, accessToken, clusterIDPortal) == true {
+	//				break
+	//			}
+	//		}
+	//		break
+	//	}
+	//}
+	fmt.Println("scaling down ...")
+	time.Sleep(time.Minute)
 	//go func() {
 	//	//// Finishing the delete process once this goroutine is over.
 	//	//var result status.NodeDeleteResult
@@ -1561,33 +1567,4 @@ func filterOutMasters(nodeInfos []*schedulerframework.NodeInfo) []*apiv1.Node {
 		}
 	}
 	return result
-}
-
-func performScaleDown(vpcID string, token string, workerCount int, idCluster string, clusterIDPortal string) {
-	url := "https://console-api-pilot.fptcloud.com/api/v1/vmware/vpc/" + vpcID + "/cluster/" + idCluster + "/scale-cluster"
-	postBody, _ := json.Marshal(map[string]string{
-		"cluster_id":   clusterIDPortal,
-		"scale_type":   "down",
-		"worker_count": strconv.Itoa(workerCount),
-	})
-	responseBody := bytes.NewBuffer(postBody)
-	var bearer = "Bearer " + token
-	client := &http.Client{}
-	req, _ := http.NewRequest("POST", url, responseBody)
-	req.Header.Add("Authorization", bearer)
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Println(err)
-	}
-	defer resp.Body.Close()
-	//log.Println(resp)
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Println("Error while reading the response bytes:", err)
-	}
-	log.Println(string([]byte(body)))
-	//fmt.Println("response Status:", resp.Status)
-	//fmt.Println("response Headers:", resp.Header)
-	//fmt.Println("response Body:", string(body))
 }

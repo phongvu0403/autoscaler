@@ -17,15 +17,9 @@ limitations under the License.
 package core
 
 import (
-	"bytes"
 	ctx "context"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"log"
 	"math"
-	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -512,6 +506,7 @@ func ScaleUp(context *context.AutoscalingContext, processors *ca_processors.Auto
 	}
 	if (numberWorkerNode + numberNodeScaleUp) > utils.GetMaxSizeNodeGroup(kubeclient) {
 		klog.V(4).Infof("Skipping node group - max size reached")
+		fmt.Println("Number of nodes need to be scaled up is: ", numberNodeScaleUp)
 		fmt.Println("Max node group size reached")
 		klog.V(4).Infof("You need to increase max group size")
 		fmt.Println("You need to increase max group size")
@@ -528,13 +523,24 @@ func ScaleUp(context *context.AutoscalingContext, processors *ca_processors.Auto
 	}
 	fmt.Println("scaling up ", numberNodeScaleUp, " node")
 	//fmt.Println("waiting for job running in AWX successfully")
-	performScaleUp(vpcID, accessToken, numberNodeScaleUp, idCluster, clusterIDPortal)
+	utils.PerformScaleUp(vpcID, accessToken, numberNodeScaleUp, idCluster, clusterIDPortal)
 	for {
 		time.Sleep(30 * time.Second)
 		isSucceededStatus := utils.CheckStatusCluster(vpcID, accessToken, clusterIDPortal)
-		fmt.Println("status cluster is SCALING")
+		fmt.Println("status of cluster is SCALING")
 		if isSucceededStatus == true {
-			fmt.Println("status cluster is SUCCEEDED")
+			fmt.Println("status of cluster is SUCCEEDED")
+			break
+		}
+		isErrorStatus := utils.CheckErrorStatusCluster(vpcID, accessToken, clusterIDPortal)
+		if isErrorStatus == true {
+			utils.PerformScaleUp(vpcID, accessToken, numberNodeScaleUp, idCluster, clusterIDPortal)
+			for {
+				time.Sleep(30 * time.Second)
+				if utils.CheckStatusCluster(vpcID, accessToken, clusterIDPortal) == true {
+					break
+				}
+			}
 			break
 		}
 	}
@@ -720,7 +726,7 @@ func ScaleUp(context *context.AutoscalingContext, processors *ca_processors.Auto
 	//		PodsAwaitEvaluation: getPodsAwaitingEvaluation(podEquivalenceGroups, ""),
 	//	}, nil
 	//}
-
+	fmt.Println("end of scale up process")
 	return &status.ScaleUpStatus{
 		Result:                  status.ScaleUpSuccessful,
 		PodsRemainUnschedulable: getRemainingPods(podEquivalenceGroups, skippedNodeGroups),
@@ -856,33 +862,4 @@ func scaleUpError(s *status.ScaleUpStatus, err errors.AutoscalerError) (*status.
 	s.ScaleUpError = &err
 	s.Result = status.ScaleUpError
 	return s, err
-}
-
-func performScaleUp(vpcID string, accessToken string, workerCount int, idCluster string, clusterIDPortal string) {
-	url := "https://console-api-pilot.fptcloud.com/api/v1/vmware/vpc/" + vpcID + "/cluster/" + idCluster + "/scale-cluster"
-	postBody, _ := json.Marshal(map[string]string{
-		"cluster_id":   clusterIDPortal,
-		"scale_type":   "up",
-		"worker_count": strconv.Itoa(workerCount),
-	})
-	responseBody := bytes.NewBuffer(postBody)
-	var bearer = "Bearer " + accessToken
-	client := &http.Client{}
-	req, _ := http.NewRequest("POST", url, responseBody)
-	req.Header.Add("Authorization", bearer)
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Println(err)
-	}
-	defer resp.Body.Close()
-	log.Println(resp)
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Println("Error while reading the response bytes:", err)
-	}
-	log.Println(string([]byte(body)))
-	// fmt.Println("response Status:", resp.Status)
-	// fmt.Println("response Headers:", resp.Header)
-	// fmt.Println("response Body:", string(body))
 }

@@ -17,6 +17,7 @@ limitations under the License.
 package utils
 
 import (
+	"bytes"
 	ctx "context"
 	"encoding/json"
 	"fmt"
@@ -216,7 +217,7 @@ func GetOldestCreateTime(pods []*apiv1.Pod) time.Time {
 //	return gpuFound, oldest
 //}
 
-// Get min size group
+// GetMinSizeNodeGroup gets min size group
 func GetMinSizeNodeGroup(kubeclient kube_client.Interface) int {
 	var minSizeNodeGroup int
 	configmaps, err := kubeclient.CoreV1().ConfigMaps("kube-system").Get(ctx.Background(), "autoscaling-configmap", metav1.GetOptions{})
@@ -236,7 +237,7 @@ func GetMinSizeNodeGroup(kubeclient kube_client.Interface) int {
 	return minSizeNodeGroup
 }
 
-// Get max size group
+// GetMaxSizeNodeGroup gets max size group
 func GetMaxSizeNodeGroup(kubeclient kube_client.Interface) int {
 	var maxSizeNodeGroup int
 	configmaps, err := kubeclient.CoreV1().ConfigMaps("kube-system").Get(ctx.Background(), "autoscaling-configmap", metav1.GetOptions{})
@@ -256,7 +257,7 @@ func GetMaxSizeNodeGroup(kubeclient kube_client.Interface) int {
 	return maxSizeNodeGroup
 }
 
-// Get access token of FPTCloud
+// GetAccessToken gets access token of FPTCloud
 func GetAccessToken(kubeclient kube_client.Interface) string {
 	var accessToken string
 	secret, err := kubeclient.CoreV1().Secrets("kube-system").Get(ctx.Background(), "fke-secret", metav1.GetOptions{})
@@ -272,7 +273,7 @@ func GetAccessToken(kubeclient kube_client.Interface) string {
 	return accessToken
 }
 
-// Get vpc_id of customer
+// GetVPCId gets vpc_id of customer
 func GetVPCId(kubeclient kube_client.Interface) string {
 	var vpcID string
 	secret, err := kubeclient.CoreV1().Secrets("kube-system").Get(ctx.Background(), "fke-secret", metav1.GetOptions{})
@@ -288,7 +289,7 @@ func GetVPCId(kubeclient kube_client.Interface) string {
 	return vpcID
 }
 
-// Get cluster_id info of K8S cluster
+// GetClusterID gets cluster_id info of K8S cluster
 func GetClusterID(kubeclient kube_client.Interface) string {
 	var clusterID string
 	secret, err := kubeclient.CoreV1().Secrets("kube-system").Get(ctx.Background(), "fke-secret", metav1.GetOptions{})
@@ -335,7 +336,7 @@ type Cluster struct {
 	} `json:"data"`
 }
 
-// Get ID of cluster
+// GetIDCluster gets ID of cluster
 func GetIDCluster(vpcID string, accessToken string, clusterID string) string {
 	var id string
 	var k8sCluster Cluster
@@ -375,6 +376,7 @@ func GetIDCluster(vpcID string, accessToken string, clusterID string) string {
 	return id
 }
 
+// CheckStatusCluster checks if status cluster is Succeeded
 func CheckStatusCluster(vpcID string, accessToken string, clusterID string) bool {
 	var isSucceeded bool = false
 	var k8sCluster Cluster
@@ -416,4 +418,106 @@ func CheckStatusCluster(vpcID string, accessToken string, clusterID string) bool
 	defer resp.Body.Close()
 	//fmt.Println("isSucceed is: ", isSucceeded)
 	return isSucceeded
+}
+
+// CheckErrorStatusCluster Checks if status cluster is Error
+func CheckErrorStatusCluster(vpcID string, accessToken string, clusterID string) bool {
+	var isError bool = false
+	var k8sCluster Cluster
+	url := "https://console-api-pilot.fptcloud.com/api/v1/vmware/vpc/" + vpcID + "/kubernetes?page=1&page_size=25"
+	token := accessToken
+	client := &http.Client{}
+	req, _ := http.NewRequest("GET", url, nil)
+	req.Header.Add("Authorization", "Bearer "+token)
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println(err)
+	}
+	//log.Println(resp)
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	dataBody := []byte(body)
+	error := json.Unmarshal(dataBody, &k8sCluster)
+	if error != nil {
+		// if error is not nil
+		// print error
+		fmt.Println(error)
+	}
+
+	//fmt.Println(k8sCluster.Data[0])
+	for _, cluster := range k8sCluster.Data {
+		//fmt.Println(cluster)
+		if cluster.ClusterID == clusterID {
+			if cluster.Status == "ERROR" {
+				isError = true
+			}
+		}
+	}
+
+	defer resp.Body.Close()
+	//fmt.Println("isSucceed is: ", isSucceeded)
+	return isError
+}
+
+// PerformScaleUp performs scale up
+func PerformScaleUp(vpcID string, accessToken string, workerCount int, idCluster string, clusterIDPortal string) {
+	url := "https://console-api-pilot.fptcloud.com/api/v1/vmware/vpc/" + vpcID + "/cluster/" + idCluster + "/scale-cluster"
+	postBody, _ := json.Marshal(map[string]string{
+		"cluster_id":   clusterIDPortal,
+		"scale_type":   "up",
+		"worker_count": strconv.Itoa(workerCount),
+	})
+	responseBody := bytes.NewBuffer(postBody)
+	var bearer = "Bearer " + accessToken
+	client := &http.Client{}
+	req, _ := http.NewRequest("POST", url, responseBody)
+	req.Header.Add("Authorization", bearer)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println(err)
+	}
+	defer resp.Body.Close()
+	log.Println(resp)
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Println("Error while reading the response bytes:", err)
+	}
+	log.Println(string([]byte(body)))
+	// fmt.Println("response Status:", resp.Status)
+	// fmt.Println("response Headers:", resp.Header)
+	// fmt.Println("response Body:", string(body))
+}
+
+// PerformScaleDown performs scale down
+func PerformScaleDown(vpcID string, token string, workerCount int, idCluster string, clusterIDPortal string) {
+	url := "https://console-api-pilot.fptcloud.com/api/v1/vmware/vpc/" + vpcID + "/cluster/" + idCluster + "/scale-cluster"
+	postBody, _ := json.Marshal(map[string]string{
+		"cluster_id":   clusterIDPortal,
+		"scale_type":   "down",
+		"worker_count": strconv.Itoa(workerCount),
+	})
+	responseBody := bytes.NewBuffer(postBody)
+	var bearer = "Bearer " + token
+	client := &http.Client{}
+	req, _ := http.NewRequest("POST", url, responseBody)
+	req.Header.Add("Authorization", bearer)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println(err)
+	}
+	defer resp.Body.Close()
+	//log.Println(resp)
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Println("Error while reading the response bytes:", err)
+	}
+	log.Println(string([]byte(body)))
+	//fmt.Println("response Status:", resp.Status)
+	//fmt.Println("response Headers:", resp.Header)
+	//fmt.Println("response Body:", string(body))
 }
