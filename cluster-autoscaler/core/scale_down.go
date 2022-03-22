@@ -1071,29 +1071,28 @@ func (sd *ScaleDown) TryToScaleDown(
 	//fmt.Println("vpcID is: ", vpcID)
 	//fmt.Println("access token is: ", accessToken)
 
-	//utils.PerformScaleDown(vpcID, accessToken, 1, idCluster, clusterIDPortal)
-	//for {
-	//	time.Sleep(30 * time.Second)
-	//	isSucceededStatus := utils.CheckStatusCluster(vpcID, accessToken, clusterIDPortal)
-	//	fmt.Println("status of cluster is SCALING")
-	//	if isSucceededStatus == true {
-	//		fmt.Println("status of cluster is SUCCEEDED")
-	//		break
-	//	}
-	//	isErrorStatus := utils.CheckErrorStatusCluster(vpcID, accessToken, clusterIDPortal)
-	//	if isErrorStatus == true {
-	//		utils.PerformScaleDown(vpcID, accessToken, 1, idCluster, clusterIDPortal)
-	//		for {
-	//			time.Sleep(30 * time.Second)
-	//			if utils.CheckStatusCluster(vpcID, accessToken, clusterIDPortal) == true {
-	//				break
-	//			}
-	//		}
-	//		break
-	//	}
-	//}
-	fmt.Println("scaling down ...")
-	time.Sleep(time.Minute)
+	utils.PerformScaleDown(vpcID, accessToken, 1, idCluster, clusterIDPortal)
+	for {
+		time.Sleep(30 * time.Second)
+		isSucceededStatus := utils.CheckStatusCluster(vpcID, accessToken, clusterIDPortal)
+		fmt.Println("status of cluster is SCALING")
+		if isSucceededStatus == true {
+			fmt.Println("status of cluster is SUCCEEDED")
+			break
+		}
+		isErrorStatus := utils.CheckErrorStatusCluster(vpcID, accessToken, clusterIDPortal)
+		if isErrorStatus == true {
+			utils.PerformScaleDown(vpcID, accessToken, 1, idCluster, clusterIDPortal)
+			for {
+				time.Sleep(30 * time.Second)
+				if utils.CheckStatusCluster(vpcID, accessToken, clusterIDPortal) == true {
+					break
+				}
+			}
+			break
+		}
+	}
+
 	//go func() {
 	//	//// Finishing the delete process once this goroutine is over.
 	//	//var result status.NodeDeleteResult

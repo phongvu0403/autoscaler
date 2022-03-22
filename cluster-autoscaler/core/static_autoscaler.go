@@ -18,7 +18,6 @@ package core
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	kube_client "k8s.io/client-go/kubernetes"
@@ -252,66 +251,66 @@ func (a *StaticAutoscaler) RunOnce(currentTime time.Time, kubeclient kube_client
 	//// Get nodes and pods currently living on cluster
 	allNodes, readyNodes, typedErr := a.obtainNodeLists()
 
-	var numberWorkerNode int = 0
-	for _, node := range readyNodes {
-		if strings.Contains(node.Name, "worker") {
-			numberWorkerNode += 1
-		}
-	}
+	//var numberWorkerNode int = 0
+	//for _, node := range readyNodes {
+	//	if strings.Contains(node.Name, "worker") {
+	//		numberWorkerNode += 1
+	//	}
+	//}
 
-	if numberWorkerNode < core_utils.GetMinSizeNodeGroup(kubeclient) {
-		workerCountNeedToScaledUp := core_utils.GetMinSizeNodeGroup(kubeclient) - numberWorkerNode
-		fmt.Println("current worker nodes are less than min node group")
-		fmt.Println("scaling up ", workerCountNeedToScaledUp, " node")
-		core_utils.PerformScaleUp(vpcID, accessToken, workerCountNeedToScaledUp, idCluster, clusterIDPortal)
-		for {
-			time.Sleep(30 * time.Second)
-			isSucceededStatus := core_utils.CheckStatusCluster(vpcID, accessToken, clusterIDPortal)
-			fmt.Println("status cluster is SCALING")
-			if isSucceededStatus == true {
-				fmt.Println("status cluster is SUCCEEDED")
-				break
-			}
-			isErrorStatus := core_utils.CheckErrorStatusCluster(vpcID, accessToken, clusterIDPortal)
-			if isErrorStatus == true {
-				core_utils.PerformScaleUp(vpcID, accessToken, workerCountNeedToScaledUp, idCluster, clusterIDPortal)
-				for {
-					time.Sleep(30 * time.Second)
-					if core_utils.CheckStatusCluster(vpcID, accessToken, clusterIDPortal) == true {
-						break
-					}
-				}
-				break
-			}
-		}
-	}
+	//if numberWorkerNode < core_utils.GetMinSizeNodeGroup(kubeclient) {
+	//	workerCountNeedToScaledUp := core_utils.GetMinSizeNodeGroup(kubeclient) - numberWorkerNode
+	//	fmt.Println("current worker nodes are less than min node group")
+	//	fmt.Println("scaling up ", workerCountNeedToScaledUp, " node")
+	//	core_utils.PerformScaleUp(vpcID, accessToken, workerCountNeedToScaledUp, idCluster, clusterIDPortal)
+	//	for {
+	//		time.Sleep(30 * time.Second)
+	//		isSucceededStatus := core_utils.CheckStatusCluster(vpcID, accessToken, clusterIDPortal)
+	//		fmt.Println("status cluster is SCALING")
+	//		if isSucceededStatus == true {
+	//			fmt.Println("status cluster is SUCCEEDED")
+	//			break
+	//		}
+	//		isErrorStatus := core_utils.CheckErrorStatusCluster(vpcID, accessToken, clusterIDPortal)
+	//		if isErrorStatus == true {
+	//			core_utils.PerformScaleUp(vpcID, accessToken, workerCountNeedToScaledUp, idCluster, clusterIDPortal)
+	//			for {
+	//				time.Sleep(30 * time.Second)
+	//				if core_utils.CheckStatusCluster(vpcID, accessToken, clusterIDPortal) == true {
+	//					break
+	//				}
+	//			}
+	//			break
+	//		}
+	//	}
+	//}
 
-	if numberWorkerNode > core_utils.GetMaxSizeNodeGroup(kubeclient) {
-		workerCountNeedToScaledDown := numberWorkerNode - core_utils.GetMaxSizeNodeGroup(kubeclient)
-		fmt.Println("current worker nodes are greater than max node group")
-		fmt.Println("scaling down ", workerCountNeedToScaledDown, " node")
-		core_utils.PerformScaleDown(vpcID, accessToken, workerCountNeedToScaledDown, idCluster, clusterIDPortal)
-		for {
-			time.Sleep(30 * time.Second)
-			isSucceededStatus := core_utils.CheckStatusCluster(vpcID, accessToken, clusterIDPortal)
-			fmt.Println("status cluster is SCALING")
-			if isSucceededStatus == true {
-				fmt.Println("status cluster is SUCCEEDED")
-				break
-			}
-			isErrorStatus := core_utils.CheckErrorStatusCluster(vpcID, accessToken, clusterIDPortal)
-			if isErrorStatus == true {
-				core_utils.PerformScaleDown(vpcID, accessToken, workerCountNeedToScaledDown, idCluster, clusterIDPortal)
-				for {
-					time.Sleep(30 * time.Second)
-					if core_utils.CheckStatusCluster(vpcID, accessToken, clusterIDPortal) == true {
-						break
-					}
-				}
-				break
-			}
-		}
-	}
+	//if numberWorkerNode > core_utils.GetMaxSizeNodeGroup(kubeclient) {
+	//	workerCountNeedToScaledDown := numberWorkerNode - core_utils.GetMaxSizeNodeGroup(kubeclient)
+	//	fmt.Println("current worker nodes are greater than max node group")
+	//	fmt.Println("scaling down ", workerCountNeedToScaledDown, " node")
+	//	core_utils.PerformScaleDown(vpcID, accessToken, workerCountNeedToScaledDown, idCluster, clusterIDPortal)
+	//	for {
+	//		time.Sleep(30 * time.Second)
+	//		isSucceededStatus := core_utils.CheckStatusCluster(vpcID, accessToken, clusterIDPortal)
+	//		fmt.Println("status cluster is SCALING")
+	//		if isSucceededStatus == true {
+	//			fmt.Println("status cluster is SUCCEEDED")
+	//			break
+	//		}
+	//		isErrorStatus := core_utils.CheckErrorStatusCluster(vpcID, accessToken, clusterIDPortal)
+	//		if isErrorStatus == true {
+	//			core_utils.PerformScaleDown(vpcID, accessToken, workerCountNeedToScaledDown, idCluster, clusterIDPortal)
+	//			for {
+	//				time.Sleep(30 * time.Second)
+	//				if core_utils.CheckStatusCluster(vpcID, accessToken, clusterIDPortal) == true {
+	//					break
+	//				}
+	//			}
+	//			break
+	//		}
+	//	}
+	//}
 
 	//fmt.Println("allNodes are")
 	//for _, node := range allNodes {
