@@ -493,6 +493,9 @@ func (sd *ScaleDown) UpdateUnneededNodes(
 	// Phase1 - look at the nodes utilization. Calculate the utilization
 	// only for the managed nodes.
 	for _, node := range scaleDownCandidates {
+		if strings.Contains(node.Name, "master") {
+			continue
+		}
 		nodeInfo, err := sd.context.ClusterSnapshot.NodeInfos().Get(node.Name)
 		if err != nil {
 			klog.Errorf("Can't retrieve scale-down candidate %s from snapshot, err: %v", node.Name, err)
