@@ -1,7 +1,7 @@
 ALL_ARCH = amd64
 all: $(addprefix build-arch-,$(ALL_ARCH))
 
-TAG?=pilot-0.4
+TAG?=0.1
 FLAGS=
 LDFLAGS?=-s
 ENVVAR=CGO_ENABLED=0
