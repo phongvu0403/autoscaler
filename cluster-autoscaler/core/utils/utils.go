@@ -544,7 +544,7 @@ func PerformScaleDown(domainAPI string, vpcID string, token string, workerCount 
 // GetDomainApiConformEnv gets url conform environment
 func GetDomainApiConformEnv(env string) string {
 	var domainAPI string
-	if env == "staging" {
+	if env == "stg" {
 		domainAPI = "https://console-api-stg.fptcloud.com"
 	} else if env == "pilot" {
 		domainAPI = "https://console-api-pilot.fptcloud.com"
