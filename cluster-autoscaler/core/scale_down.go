@@ -833,6 +833,7 @@ func (sd *ScaleDown) TryToScaleDown(
 	vpcID string,
 	idCluster string,
 	clusterIDPortal string,
+	env string,
 ) (*status.ScaleDownStatus, errors.AutoscalerError) {
 
 	scaleDownStatus := &status.ScaleDownStatus{NodeDeleteResults: sd.nodeDeletionTracker.GetAndClearNodeDeleteResults()}
@@ -1073,22 +1074,22 @@ func (sd *ScaleDown) TryToScaleDown(
 	//fmt.Println("Wait for running in AWX successfully")
 	//fmt.Println("vpcID is: ", vpcID)
 	//fmt.Println("access token is: ", accessToken)
-
-	utils.PerformScaleDown(vpcID, accessToken, 1, idCluster, clusterIDPortal)
+	domainAPI := utils.GetDomainApiConformEnv(env)
+	utils.PerformScaleDown(domainAPI, vpcID, accessToken, 1, idCluster, clusterIDPortal)
 	for {
 		time.Sleep(30 * time.Second)
-		isSucceededStatus := utils.CheckStatusCluster(vpcID, accessToken, clusterIDPortal)
+		isSucceededStatus := utils.CheckStatusCluster(domainAPI, vpcID, accessToken, clusterIDPortal)
 		fmt.Println("status of cluster is SCALING")
 		if isSucceededStatus == true {
 			fmt.Println("status of cluster is SUCCEEDED")
 			break
 		}
-		isErrorStatus := utils.CheckErrorStatusCluster(vpcID, accessToken, clusterIDPortal)
+		isErrorStatus := utils.CheckErrorStatusCluster(domainAPI, vpcID, accessToken, clusterIDPortal)
 		if isErrorStatus == true {
-			utils.PerformScaleDown(vpcID, accessToken, 1, idCluster, clusterIDPortal)
+			utils.PerformScaleDown(domainAPI, vpcID, accessToken, 1, idCluster, clusterIDPortal)
 			for {
 				time.Sleep(30 * time.Second)
-				if utils.CheckStatusCluster(vpcID, accessToken, clusterIDPortal) == true {
+				if utils.CheckStatusCluster(domainAPI, vpcID, accessToken, clusterIDPortal) == true {
 					break
 				}
 			}

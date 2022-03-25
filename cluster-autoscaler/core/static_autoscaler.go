@@ -215,7 +215,7 @@ func (a *StaticAutoscaler) initializeClusterSnapshot(nodes []*apiv1.Node, schedu
 }
 
 // RunOnce iterates over node groups and scales them up/down if necessary
-func (a *StaticAutoscaler) RunOnce(currentTime time.Time, kubeclient kube_client.Interface, vpcID string, accessToken string, idCluster string, clusterIDPortal string) errors.AutoscalerError {
+func (a *StaticAutoscaler) RunOnce(currentTime time.Time, kubeclient kube_client.Interface, vpcID string, accessToken string, idCluster string, clusterIDPortal string, env string) errors.AutoscalerError {
 	a.cleanUpIfRequired()
 	a.processorCallbacks.reset()
 	a.clusterStateRegistry.PeriodicCleanup()
@@ -574,7 +574,7 @@ func (a *StaticAutoscaler) RunOnce(currentTime time.Time, kubeclient kube_client
 		fmt.Println("Start to scale up")
 		metrics.UpdateLastTime(metrics.ScaleUp, scaleUpStart)
 
-		scaleUpStatus, typedErr = ScaleUp(autoscalingContext, a.processors, a.clusterStateRegistry, unschedulablePodsToHelp, readyNodes, daemonsets, a.ignoredTaints, kubeclient, accessToken, vpcID, idCluster, clusterIDPortal)
+		scaleUpStatus, typedErr = ScaleUp(autoscalingContext, a.processors, a.clusterStateRegistry, unschedulablePodsToHelp, readyNodes, daemonsets, a.ignoredTaints, kubeclient, accessToken, vpcID, idCluster, clusterIDPortal, env)
 
 		metrics.UpdateDurationFromStart(metrics.ScaleUp, scaleUpStart)
 
@@ -727,7 +727,7 @@ func (a *StaticAutoscaler) RunOnce(currentTime time.Time, kubeclient kube_client
 
 			scaleDownStart := time.Now()
 			metrics.UpdateLastTime(metrics.ScaleDown, scaleDownStart)
-			scaleDownStatus, typedErr := scaleDown.TryToScaleDown(currentTime, pdbs, kubeclient, accessToken, vpcID, idCluster, clusterIDPortal)
+			scaleDownStatus, typedErr := scaleDown.TryToScaleDown(currentTime, pdbs, kubeclient, accessToken, vpcID, idCluster, clusterIDPortal, env)
 			metrics.UpdateDurationFromStart(metrics.ScaleDown, scaleDownStart)
 			metrics.UpdateUnremovableNodesCount(scaleDown.getUnremovableNodesCount())
 

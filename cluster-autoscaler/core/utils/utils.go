@@ -257,6 +257,25 @@ func GetMaxSizeNodeGroup(kubeclient kube_client.Interface) int {
 	return maxSizeNodeGroup
 }
 
+// GetEnv gets environment (staging/pilot/production)
+func GetEnv(kubeclient kube_client.Interface) string {
+	var env string
+	configmaps, err := kubeclient.CoreV1().ConfigMaps("kube-system").Get(ctx.Background(), "autoscaling-configmap", metav1.GetOptions{})
+	if err != nil {
+		fmt.Println("cannot get information from autoscaling configmap")
+		klog.Fatalf("Failed to get information of autoscaling configmap: %v", err)
+	}
+	for k, v := range configmaps.Data {
+		if k == "env" {
+			if err != nil {
+				klog.Fatalf("Failed to convert string to integer: %v", err)
+			}
+			env = v
+		}
+	}
+	return env
+}
+
 // GetAccessToken gets access token of FPTCloud
 func GetAccessToken(kubeclient kube_client.Interface) string {
 	var accessToken string
@@ -337,10 +356,10 @@ type Cluster struct {
 }
 
 // GetIDCluster gets ID of cluster
-func GetIDCluster(vpcID string, accessToken string, clusterID string) string {
+func GetIDCluster(domainAPI string, vpcID string, accessToken string, clusterID string) string {
 	var id string
 	var k8sCluster Cluster
-	url := "https://console-api-pilot.fptcloud.com/api/v1/vmware/vpc/" + vpcID + "/kubernetes?page=1&page_size=25"
+	url := domainAPI + "/api/v1/vmware/vpc/" + vpcID + "/kubernetes?page=1&page_size=25"
 	token := accessToken
 	client := &http.Client{}
 	req, _ := http.NewRequest("GET", url, nil)
@@ -377,10 +396,10 @@ func GetIDCluster(vpcID string, accessToken string, clusterID string) string {
 }
 
 // CheckStatusCluster checks if status cluster is Succeeded
-func CheckStatusCluster(vpcID string, accessToken string, clusterID string) bool {
+func CheckStatusCluster(domainAPI string, vpcID string, accessToken string, clusterID string) bool {
 	var isSucceeded bool = false
 	var k8sCluster Cluster
-	url := "https://console-api-pilot.fptcloud.com/api/v1/vmware/vpc/" + vpcID + "/kubernetes?page=1&page_size=25"
+	url := domainAPI + "/api/v1/vmware/vpc/" + vpcID + "/kubernetes?page=1&page_size=25"
 	token := accessToken
 	client := &http.Client{}
 	req, _ := http.NewRequest("GET", url, nil)
@@ -421,10 +440,10 @@ func CheckStatusCluster(vpcID string, accessToken string, clusterID string) bool
 }
 
 // CheckErrorStatusCluster Checks if status cluster is Error
-func CheckErrorStatusCluster(vpcID string, accessToken string, clusterID string) bool {
+func CheckErrorStatusCluster(domainAPT string, vpcID string, accessToken string, clusterID string) bool {
 	var isError bool = false
 	var k8sCluster Cluster
-	url := "https://console-api-pilot.fptcloud.com/api/v1/vmware/vpc/" + vpcID + "/kubernetes?page=1&page_size=25"
+	url := domainAPT + "/api/v1/vmware/vpc/" + vpcID + "/kubernetes?page=1&page_size=25"
 	token := accessToken
 	client := &http.Client{}
 	req, _ := http.NewRequest("GET", url, nil)
@@ -463,8 +482,8 @@ func CheckErrorStatusCluster(vpcID string, accessToken string, clusterID string)
 }
 
 // PerformScaleUp performs scale up
-func PerformScaleUp(vpcID string, accessToken string, workerCount int, idCluster string, clusterIDPortal string) {
-	url := "https://console-api-pilot.fptcloud.com/api/v1/vmware/vpc/" + vpcID + "/cluster/" + idCluster + "/scale-cluster"
+func PerformScaleUp(domainAPI string, vpcID string, accessToken string, workerCount int, idCluster string, clusterIDPortal string) {
+	url := domainAPI + "/api/v1/vmware/vpc/" + vpcID + "/cluster/" + idCluster + "/scale-cluster"
 	postBody, _ := json.Marshal(map[string]string{
 		"cluster_id":   clusterIDPortal,
 		"scale_type":   "up",
@@ -493,8 +512,8 @@ func PerformScaleUp(vpcID string, accessToken string, workerCount int, idCluster
 }
 
 // PerformScaleDown performs scale down
-func PerformScaleDown(vpcID string, token string, workerCount int, idCluster string, clusterIDPortal string) {
-	url := "https://console-api-pilot.fptcloud.com/api/v1/vmware/vpc/" + vpcID + "/cluster/" + idCluster + "/scale-cluster"
+func PerformScaleDown(domainAPI string, vpcID string, token string, workerCount int, idCluster string, clusterIDPortal string) {
+	url := domainAPI + "/api/v1/vmware/vpc/" + vpcID + "/cluster/" + idCluster + "/scale-cluster"
 	postBody, _ := json.Marshal(map[string]string{
 		"cluster_id":   clusterIDPortal,
 		"scale_type":   "down",
@@ -520,4 +539,17 @@ func PerformScaleDown(vpcID string, token string, workerCount int, idCluster str
 	//fmt.Println("response Status:", resp.Status)
 	//fmt.Println("response Headers:", resp.Header)
 	//fmt.Println("response Body:", string(body))
+}
+
+// GetDomainApiConformEnv gets url conform environment
+func GetDomainApiConformEnv(env string) string {
+	var domainAPI string
+	if env == "staging" {
+		domainAPI = "https://console-api-stg.fptcloud.com"
+	} else if env == "pilot" {
+		domainAPI = "https://console-api-pilot.fptcloud.com"
+	} else {
+		domainAPI = "https://console-api.fptcloud.com"
+	}
+	return domainAPI
 }

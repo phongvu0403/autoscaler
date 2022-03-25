@@ -360,7 +360,8 @@ func CalculateNewNodeScaledUp(kubeclient kube_client.Interface, unschedulablePod
 // false if it didn't and error if an error occurred. Assumes that all nodes in the cluster are
 // ready and in sync with instance groups.
 func ScaleUp(context *context.AutoscalingContext, processors *ca_processors.AutoscalingProcessors, clusterStateRegistry *clusterstate.ClusterStateRegistry, unschedulablePods []*apiv1.Pod,
-	nodes []*apiv1.Node, daemonSets []*appsv1.DaemonSet, ignoredTaints taints.TaintKeySet, kubeclient kube_client.Interface, accessToken string, vpcID string, idCluster string, clusterIDPortal string) (*status.ScaleUpStatus, errors.AutoscalerError) {
+	nodes []*apiv1.Node, daemonSets []*appsv1.DaemonSet, ignoredTaints taints.TaintKeySet, kubeclient kube_client.Interface, accessToken string, vpcID string, idCluster string, clusterIDPortal string,
+	env string) (*status.ScaleUpStatus, errors.AutoscalerError) {
 	// From now on we only care about unschedulable pods that were marked after the newest
 	// node became available for the scheduler.
 	if len(unschedulablePods) == 0 {
@@ -523,21 +524,22 @@ func ScaleUp(context *context.AutoscalingContext, processors *ca_processors.Auto
 	}
 	fmt.Println("scaling up ", numberNodeScaleUp, " node")
 	//fmt.Println("waiting for job running in AWX successfully")
-	utils.PerformScaleUp(vpcID, accessToken, numberNodeScaleUp, idCluster, clusterIDPortal)
+	domainAPI := utils.GetDomainApiConformEnv(env)
+	utils.PerformScaleUp(domainAPI, vpcID, accessToken, numberNodeScaleUp, idCluster, clusterIDPortal)
 	for {
 		time.Sleep(30 * time.Second)
-		isSucceededStatus := utils.CheckStatusCluster(vpcID, accessToken, clusterIDPortal)
+		isSucceededStatus := utils.CheckStatusCluster(domainAPI, vpcID, accessToken, clusterIDPortal)
 		fmt.Println("status of cluster is SCALING")
 		if isSucceededStatus == true {
 			fmt.Println("status of cluster is SUCCEEDED")
 			break
 		}
-		isErrorStatus := utils.CheckErrorStatusCluster(vpcID, accessToken, clusterIDPortal)
+		isErrorStatus := utils.CheckErrorStatusCluster(domainAPI, vpcID, accessToken, clusterIDPortal)
 		if isErrorStatus == true {
-			utils.PerformScaleUp(vpcID, accessToken, numberNodeScaleUp, idCluster, clusterIDPortal)
+			utils.PerformScaleUp(domainAPI, vpcID, accessToken, numberNodeScaleUp, idCluster, clusterIDPortal)
 			for {
 				time.Sleep(30 * time.Second)
-				if utils.CheckStatusCluster(vpcID, accessToken, clusterIDPortal) == true {
+				if utils.CheckStatusCluster(domainAPI, vpcID, accessToken, clusterIDPortal) == true {
 					break
 				}
 			}

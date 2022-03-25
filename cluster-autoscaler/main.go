@@ -354,7 +354,7 @@ func buildAutoscaler(debuggingSnapshotter debuggingsnapshot.DebuggingSnapshotter
 	return core.NewAutoscaler(opts)
 }
 
-func run(healthCheck *metrics.HealthCheck, debuggingSnapshotter debuggingsnapshot.DebuggingSnapshotter, kubeclient kube_client.Interface, vpcID string, accessToken string, idCluster string, clusterIDPortal string) {
+func run(healthCheck *metrics.HealthCheck, debuggingSnapshotter debuggingsnapshot.DebuggingSnapshotter, kubeclient kube_client.Interface, vpcID string, accessToken string, idCluster string, clusterIDPortal string, env string) {
 	metrics.RegisterAll(*emitPerNodeGroupMetrics)
 
 	autoscaler, err := buildAutoscaler(debuggingSnapshotter)
@@ -382,7 +382,7 @@ func run(healthCheck *metrics.HealthCheck, debuggingSnapshotter debuggingsnapsho
 				metrics.UpdateLastTime(metrics.Main, loopStart)
 				healthCheck.UpdateLastActivity(loopStart)
 
-				err := autoscaler.RunOnce(loopStart, kubeclient, vpcID, accessToken, idCluster, clusterIDPortal)
+				err := autoscaler.RunOnce(loopStart, kubeclient, vpcID, accessToken, idCluster, clusterIDPortal, env)
 				if err != nil && err.Type() != errors.TransientError {
 					metrics.RegisterError(err)
 				} else {
@@ -429,7 +429,7 @@ func main() {
 	}()
 
 	if !leaderElection.LeaderElect {
-		run(healthCheck, debuggingSnapshotter, nil, "", "", "", "")
+		run(healthCheck, debuggingSnapshotter, nil, "", "", "", "", "")
 	} else {
 		id, err := os.Hostname()
 		if err != nil {
@@ -440,7 +440,9 @@ func main() {
 		vpcID := utils.GetVPCId(kubeClient)
 		accessToken := utils.GetAccessToken(kubeClient)
 		clusterIDPortal := utils.GetClusterID(kubeClient)
-		idCluster := utils.GetIDCluster(vpcID, accessToken, clusterIDPortal)
+		env := utils.GetEnv(kubeClient)
+		domainAPI := utils.GetDomainApiConformEnv(env)
+		idCluster := utils.GetIDCluster(domainAPI, vpcID, accessToken, clusterIDPortal)
 		// Validate that the client is ok.
 		_, err = kubeClient.CoreV1().Nodes().List(ctx.TODO(), metav1.ListOptions{})
 		if err != nil {
@@ -472,7 +474,7 @@ func main() {
 				OnStartedLeading: func(_ ctx.Context) {
 					// Since we are committing a suicide after losing
 					// mastership, we can safely ignore the argument.
-					run(healthCheck, debuggingSnapshotter, kubeClient, vpcID, accessToken, idCluster, clusterIDPortal)
+					run(healthCheck, debuggingSnapshotter, kubeClient, vpcID, accessToken, idCluster, clusterIDPortal, env)
 				},
 				OnStoppedLeading: func() {
 					klog.Fatalf("lost master")
