@@ -488,8 +488,9 @@ func (sd *ScaleDown) UpdateUnneededNodes(
 		}
 	}
 
-	fmt.Println()
-	fmt.Println("number of worker scale down candidates is: ", scaleDownCadidatesWorker)
+	//fmt.Println()
+	//fmt.Println("number of worker scale down candidates is: ", scaleDownCadidatesWorker)
+
 	// Phase1 - look at the nodes utilization. Calculate the utilization
 	// only for the managed nodes.
 	for _, node := range scaleDownCandidates {
@@ -508,11 +509,11 @@ func (sd *ScaleDown) UpdateUnneededNodes(
 			utilizationMap[node.Name] = *utilInfo
 		}
 
-		fmt.Println()
-		fmt.Println("Utilization info is: ")
-		for node, util := range utilizationMap {
-			fmt.Println("Node: ", node, " CPU-Util: ", util.CpuUtil, " MemoryUtil: ", util.MemUtil, " Utilization: ", util.Utilization)
-		}
+		//fmt.Println()
+		//fmt.Println("Utilization info is: ")
+		//for node, util := range utilizationMap {
+		//	fmt.Println("Node: ", node, " CPU-Util: ", util.CpuUtil, " MemoryUtil: ", util.MemUtil, " Utilization: ", util.Utilization)
+		//}
 
 		if reason != simulator.NoReason {
 			// For logging purposes.
@@ -584,8 +585,9 @@ func (sd *ScaleDown) UpdateUnneededNodes(
 		return sd.markSimulationError(simulatorErr, timestamp)
 	}
 
-	fmt.Println()
-	fmt.Println("number of nodes to Remove is: ", len(nodesToRemove))
+	//fmt.Println()
+	//fmt.Println("number of nodes to Remove is: ", len(nodesToRemove))
+
 	// fmt.Println("node to Remove are: ")
 	// for _, node := range nodesToRemove {
 	// 	fmt.Println(node.Node.Name)
@@ -976,11 +978,11 @@ func (sd *ScaleDown) TryToScaleDown(
 
 		candidateNames = append(candidateNames, node.Name)
 
-		fmt.Println()
-		fmt.Println("candidateNames are: ")
-		for _, node := range candidateNames {
-			fmt.Println(node)
-		}
+		//fmt.Println()
+		//fmt.Println("candidateNames are: ")
+		//for _, node := range candidateNames {
+		//	fmt.Println(node)
+		//}
 		//candidateNodeGroups[node.Name] = nodeGroup
 	}
 
@@ -1037,8 +1039,8 @@ func (sd *ScaleDown) TryToScaleDown(
 		return scaleDownStatus, err.AddPrefix("Find node to remove failed: ")
 	}
 
-	klog.V(1).Infof("find nodes to remove")
-	klog.V(1).Infof("number of nodes to Remove: ", len(nodesToRemove))
+	klog.V(1).Infof("Find nodes to remove")
+	klog.V(1).Infof("Number of nodes to Remove: ", len(nodesToRemove))
 	//fmt.Println()
 	//fmt.Println("number of nodes to Remove: ", len(nodesToRemove))
 	//for _, node := range nodesToRemove {
@@ -1064,7 +1066,7 @@ func (sd *ScaleDown) TryToScaleDown(
 	// // Nothing super-bad should happen if the node is removed from tracker prematurely.
 	// simulator.RemoveNodeFromTracker(sd.usageTracker, toRemove.Node.Name, sd.unneededNodes)
 	nodeDeletionStart := time.Now()
-	fmt.Println("node deletion start: ", nodeDeletionStart)
+	//fmt.Println("node deletion start: ", nodeDeletionStart)
 
 	// Starting deletion.
 	nodeDeletionDuration = time.Now().Sub(nodeDeletionStart)
@@ -1079,9 +1081,11 @@ func (sd *ScaleDown) TryToScaleDown(
 	for {
 		time.Sleep(30 * time.Second)
 		isSucceededStatus := utils.CheckStatusCluster(domainAPI, vpcID, accessToken, clusterIDPortal)
-		fmt.Println("status of cluster is SCALING")
+		//fmt.Println("status of cluster is SCALING")
+		klog.V(1).Infof("Status of cluster is SCALING")
 		if isSucceededStatus == true {
-			fmt.Println("status of cluster is SUCCEEDED")
+			//fmt.Println("status of cluster is SUCCEEDED")
+			klog.V(1).Infof("Status of cluster is SUCCEEDED")
 			break
 		}
 		isErrorStatus := utils.CheckErrorStatusCluster(domainAPI, vpcID, accessToken, clusterIDPortal)
@@ -1124,7 +1128,8 @@ func (sd *ScaleDown) TryToScaleDown(
 
 	//scaleDownStatus.ScaledDownNodes = sd.mapNodesToStatusScaleDownNodes([]*apiv1.Node{toRemove.Node}, candidateNodeGroups, map[string][]*apiv1.Pod{toRemove.Node.Name: toRemove.PodsToReschedule})
 	scaleDownStatus.Result = status.ScaleDownNodeDeleteStarted
-	fmt.Println("end of scale down process")
+	//fmt.Println("end of scale down process")
+	klog.V(1).Infof("End of scale down process")
 	return scaleDownStatus, nil
 }
 

@@ -495,8 +495,8 @@ func ScaleUp(context *context.AutoscalingContext, processors *ca_processors.Auto
 			numberWorkerNode += 1
 		}
 	}
-	fmt.Println()
-	fmt.Println("Number of worker node: ", numberWorkerNode)
+	//fmt.Println()
+	//fmt.Println("Number of worker node: ", numberWorkerNode)
 	numberNodeScaleUp := CalculateNewNodeScaledUp(kubeclient, unschedulablePods, nodes)
 	if numberNodeScaleUp == 0 {
 		return &status.ScaleUpStatus{
@@ -507,10 +507,12 @@ func ScaleUp(context *context.AutoscalingContext, processors *ca_processors.Auto
 	}
 	if (numberWorkerNode + numberNodeScaleUp) > utils.GetMaxSizeNodeGroup(kubeclient) {
 		klog.V(4).Infof("Skipping node group - max size reached")
-		fmt.Println("Number of nodes need to be scaled up is: ", numberNodeScaleUp)
-		fmt.Println("Max node group size reached")
+		klog.V(4).Infof("Number of nodes need to be scaled up is: ", numberNodeScaleUp)
+		//fmt.Println("Number of nodes need to be scaled up is: ", numberNodeScaleUp)
+		//fmt.Println("Max node group size reached")
+		klog.V(4).Infof("Max node group size reached")
 		klog.V(4).Infof("You need to increase max group size")
-		fmt.Println("You need to increase max group size")
+		//fmt.Println("You need to increase max group size")
 		numberNodeScaleUp = utils.GetMaxSizeNodeGroup(kubeclient) - numberWorkerNode
 		//fmt.Println("scaling up ", numberNodeScaleUp, " node")
 		//fmt.Println("waiting for job running in AWX successfully")
@@ -522,16 +524,19 @@ func ScaleUp(context *context.AutoscalingContext, processors *ca_processors.Auto
 			}, nil
 		}
 	}
-	fmt.Println("scaling up ", numberNodeScaleUp, " node")
+	klog.V(4).Infof("Scaling up", numberNodeScaleUp, " node")
+	//fmt.Println("scaling up ", numberNodeScaleUp, " node")
 	//fmt.Println("waiting for job running in AWX successfully")
 	domainAPI := utils.GetDomainApiConformEnv(env)
 	utils.PerformScaleUp(domainAPI, vpcID, accessToken, numberNodeScaleUp, idCluster, clusterIDPortal)
 	for {
 		time.Sleep(30 * time.Second)
 		isSucceededStatus := utils.CheckStatusCluster(domainAPI, vpcID, accessToken, clusterIDPortal)
-		fmt.Println("status of cluster is SCALING")
+		//fmt.Println("status of cluster is SCALING")
+		klog.V(1).Infof("Status of cluster is SCALING")
 		if isSucceededStatus == true {
-			fmt.Println("status of cluster is SUCCEEDED")
+			//fmt.Println("status of cluster is SUCCEEDED")
+			klog.V(1).Infof("Status of cluster is SUCCEEDED")
 			break
 		}
 		isErrorStatus := utils.CheckErrorStatusCluster(domainAPI, vpcID, accessToken, clusterIDPortal)
@@ -728,7 +733,8 @@ func ScaleUp(context *context.AutoscalingContext, processors *ca_processors.Auto
 	//		PodsAwaitEvaluation: getPodsAwaitingEvaluation(podEquivalenceGroups, ""),
 	//	}, nil
 	//}
-	fmt.Println("end of scale up process")
+	//fmt.Println("End of scale up process")
+	klog.V(1).Infof("End of scale up process")
 	return &status.ScaleUpStatus{
 		Result:                  status.ScaleUpSuccessful,
 		PodsRemainUnschedulable: getRemainingPods(podEquivalenceGroups, skippedNodeGroups),

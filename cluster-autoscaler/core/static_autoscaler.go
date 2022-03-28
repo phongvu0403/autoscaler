@@ -262,15 +262,19 @@ func (a *StaticAutoscaler) RunOnce(currentTime time.Time, kubeclient kube_client
 
 	if numberWorkerNode < core_utils.GetMinSizeNodeGroup(kubeclient) {
 		workerCountNeedToScaledUp := core_utils.GetMinSizeNodeGroup(kubeclient) - numberWorkerNode
-		fmt.Println("current worker nodes are less than min node group")
-		fmt.Println("scaling up ", workerCountNeedToScaledUp, " node")
+		klog.V(1).Infof("Current worker nodes are less than min node group")
+		klog.V(1).Infof("Scaling up ", workerCountNeedToScaledUp, " node")
+		//fmt.Println("current worker nodes are less than min node group")
+		//fmt.Println("scaling up ", workerCountNeedToScaledUp, " node")
 		core_utils.PerformScaleUp(domainAPI, vpcID, accessToken, workerCountNeedToScaledUp, idCluster, clusterIDPortal)
 		for {
 			time.Sleep(30 * time.Second)
 			isSucceededStatus := core_utils.CheckStatusCluster(domainAPI, vpcID, accessToken, clusterIDPortal)
-			fmt.Println("status cluster is SCALING")
+			//fmt.Println("status cluster is SCALING")
+			klog.V(1).Infof("Status of cluster is SCALING")
 			if isSucceededStatus == true {
-				fmt.Println("status cluster is SUCCEEDED")
+				//fmt.Println("status cluster is SUCCEEDED")
+				klog.V(1).Infof("Status of cluster is SUCCEEDED")
 				break
 			}
 			isErrorStatus := core_utils.CheckErrorStatusCluster(domainAPI, vpcID, accessToken, clusterIDPortal)
@@ -287,15 +291,19 @@ func (a *StaticAutoscaler) RunOnce(currentTime time.Time, kubeclient kube_client
 		}
 	} else if numberWorkerNode > core_utils.GetMaxSizeNodeGroup(kubeclient) {
 		workerCountNeedToScaledDown := numberWorkerNode - core_utils.GetMaxSizeNodeGroup(kubeclient)
-		fmt.Println("current worker nodes are greater than max node group")
-		fmt.Println("scaling down ", workerCountNeedToScaledDown, " node")
+		klog.V(1).Infof("Current worker nodes are greater than max node group")
+		klog.V(1).Infof("Scaling down ", workerCountNeedToScaledDown, " node")
+		//fmt.Println("current worker nodes are greater than max node group")
+		//fmt.Println("scaling down ", workerCountNeedToScaledDown, " node")
 		core_utils.PerformScaleDown(domainAPI, vpcID, accessToken, workerCountNeedToScaledDown, idCluster, clusterIDPortal)
 		for {
 			time.Sleep(30 * time.Second)
 			isSucceededStatus := core_utils.CheckStatusCluster(domainAPI, vpcID, accessToken, clusterIDPortal)
-			fmt.Println("status cluster is SCALING")
+			//fmt.Println("status cluster is SCALING")
+			klog.V(1).Infof("Status of cluster is SCALING")
 			if isSucceededStatus == true {
-				fmt.Println("status cluster is SUCCEEDED")
+				//fmt.Println("status cluster is SUCCEEDED")
+				klog.V(1).Infof("Status of cluster is SUCCEEDED")
 				break
 			}
 			isErrorStatus := core_utils.CheckErrorStatusCluster(domainAPI, vpcID, accessToken, clusterIDPortal)
@@ -556,8 +564,9 @@ func (a *StaticAutoscaler) RunOnce(currentTime time.Time, kubeclient kube_client
 	if len(unschedulablePodsToHelp) == 0 {
 		scaleUpStatus.Result = status.ScaleUpNotNeeded
 		klog.V(1).Info("No unschedulable pods")
+		klog.V(1).Info("No need Scale up")
 
-		fmt.Println("No need Scale up")
+		//fmt.Println("No need Scale up")
 
 	} else if allPodsAreNew(unschedulablePodsToHelp, currentTime) {
 		// The assumption here is that these pods have been created very recently and probably there
@@ -568,12 +577,13 @@ func (a *StaticAutoscaler) RunOnce(currentTime time.Time, kubeclient kube_client
 		scaleUpStatus.Result = status.ScaleUpInCooldown
 		klog.V(1).Info("Unschedulable pods are very new, waiting one iteration for more")
 
-		fmt.Println()
-		fmt.Println("Unschedulable pods are very new, waiting one iteration for more")
+		//fmt.Println()
+		//fmt.Println("Unschedulable pods are very new, waiting one iteration for more")
 
 	} else {
 		scaleUpStart := time.Now()
-		fmt.Println("Start to scale up")
+		//fmt.Println("Start to scale up")
+		klog.V(1).Info("Start to scale up")
 		metrics.UpdateLastTime(metrics.ScaleUp, scaleUpStart)
 
 		scaleUpStatus, typedErr = ScaleUp(autoscalingContext, a.processors, a.clusterStateRegistry, unschedulablePodsToHelp, readyNodes, daemonsets, a.ignoredTaints, kubeclient, accessToken, vpcID, idCluster, clusterIDPortal, env)
