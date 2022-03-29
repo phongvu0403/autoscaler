@@ -1077,6 +1077,7 @@ func (sd *ScaleDown) TryToScaleDown(
 	//fmt.Println("vpcID is: ", vpcID)
 	//fmt.Println("access token is: ", accessToken)
 	domainAPI := utils.GetDomainApiConformEnv(env)
+	klog.V(1).Infof("Scaling down 1 node")
 	utils.PerformScaleDown(domainAPI, vpcID, accessToken, 1, idCluster, clusterIDPortal)
 	for {
 		time.Sleep(30 * time.Second)

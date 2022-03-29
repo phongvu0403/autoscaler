@@ -507,7 +507,7 @@ func ScaleUp(context *context.AutoscalingContext, processors *ca_processors.Auto
 	}
 	if (numberWorkerNode + numberNodeScaleUp) > utils.GetMaxSizeNodeGroup(kubeclient) {
 		klog.V(4).Infof("Skipping node group - max size reached")
-		klog.V(4).Infof("Number of nodes need to be scaled up is: ", numberNodeScaleUp)
+		klog.V(4).Infof("Number of nodes need to be scaled up is: %v", numberNodeScaleUp)
 		//fmt.Println("Number of nodes need to be scaled up is: ", numberNodeScaleUp)
 		//fmt.Println("Max node group size reached")
 		klog.V(4).Infof("Max node group size reached")
@@ -524,7 +524,7 @@ func ScaleUp(context *context.AutoscalingContext, processors *ca_processors.Auto
 			}, nil
 		}
 	}
-	klog.V(4).Infof("Scaling up", numberNodeScaleUp, " node")
+	klog.V(4).Infof("Scaling up %v node", numberNodeScaleUp)
 	//fmt.Println("scaling up ", numberNodeScaleUp, " node")
 	//fmt.Println("waiting for job running in AWX successfully")
 	domainAPI := utils.GetDomainApiConformEnv(env)
