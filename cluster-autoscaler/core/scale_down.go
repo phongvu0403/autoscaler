@@ -1040,7 +1040,7 @@ func (sd *ScaleDown) TryToScaleDown(
 	}
 
 	klog.V(1).Infof("Find nodes to remove")
-	klog.V(1).Infof("Number of nodes to Remove: %v", len(nodesToRemove))
+	//klog.V(1).Infof("Number of nodes to Remove: %v", len(nodesToRemove))
 	//fmt.Println()
 	//fmt.Println("number of nodes to Remove: ", len(nodesToRemove))
 	//for _, node := range nodesToRemove {
