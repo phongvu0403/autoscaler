@@ -263,7 +263,7 @@ func (a *StaticAutoscaler) RunOnce(currentTime time.Time, kubeclient kube_client
 	if numberWorkerNode < core_utils.GetMinSizeNodeGroup(kubeclient) {
 		workerCountNeedToScaledUp := core_utils.GetMinSizeNodeGroup(kubeclient) - numberWorkerNode
 		klog.V(1).Infof("Current worker nodes are less than min node group")
-		klog.V(1).Infof("Scaling up ", workerCountNeedToScaledUp, " node")
+		klog.V(1).Infof("Scaling up %v node", workerCountNeedToScaledUp)
 		//fmt.Println("current worker nodes are less than min node group")
 		//fmt.Println("scaling up ", workerCountNeedToScaledUp, " node")
 		core_utils.PerformScaleUp(domainAPI, vpcID, accessToken, workerCountNeedToScaledUp, idCluster, clusterIDPortal)
@@ -292,7 +292,7 @@ func (a *StaticAutoscaler) RunOnce(currentTime time.Time, kubeclient kube_client
 	} else if numberWorkerNode > core_utils.GetMaxSizeNodeGroup(kubeclient) {
 		workerCountNeedToScaledDown := numberWorkerNode - core_utils.GetMaxSizeNodeGroup(kubeclient)
 		klog.V(1).Infof("Current worker nodes are greater than max node group")
-		klog.V(1).Infof("Scaling down ", workerCountNeedToScaledDown, " node")
+		klog.V(1).Infof("Scaling down %v node", workerCountNeedToScaledDown)
 		//fmt.Println("current worker nodes are greater than max node group")
 		//fmt.Println("scaling down ", workerCountNeedToScaledDown, " node")
 		core_utils.PerformScaleDown(domainAPI, vpcID, accessToken, workerCountNeedToScaledDown, idCluster, clusterIDPortal)
