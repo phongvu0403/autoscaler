@@ -935,7 +935,7 @@ func (sd *ScaleDown) TryToScaleDown(
 		//}
 
 		//unneededTime := time.Duration(0)
-		unneededTime := 4 * time.Minute
+		unneededTime := 10 * time.Minute
 		//if err != nil {
 		//	klog.Errorf("Error trying to get ScaleDownUnneededTime for node %s (in group: %s)", node.Name, nodeGroup.Id())
 		//	continue
@@ -1018,7 +1018,7 @@ func (sd *ScaleDown) TryToScaleDown(
 	findNodesToRemoveStart := time.Now()
 
 	// We look for only 1 node so new hints may be incomplete.
-	nodesToRemove, unremovable, _, err := simulator.FindNodesToRemove(
+	_, unremovable, _, err := simulator.FindNodesToRemove(
 		candidateNames,
 		nodesWithoutMasterNames,
 		sd.context.ListerRegistry,
