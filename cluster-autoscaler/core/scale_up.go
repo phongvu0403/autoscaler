@@ -528,29 +528,40 @@ func ScaleUp(context *context.AutoscalingContext, processors *ca_processors.Auto
 	//fmt.Println("scaling up ", numberNodeScaleUp, " node")
 	//fmt.Println("waiting for job running in AWX successfully")
 	domainAPI := utils.GetDomainApiConformEnv(env)
-	utils.PerformScaleUp(domainAPI, vpcID, accessToken, numberNodeScaleUp, idCluster, clusterIDPortal)
-	for {
-		time.Sleep(30 * time.Second)
-		isSucceededStatus := utils.CheckStatusCluster(domainAPI, vpcID, accessToken, clusterIDPortal)
-		//fmt.Println("status of cluster is SCALING")
-		klog.V(1).Infof("Status of cluster is SCALING")
-		if isSucceededStatus == true {
-			//fmt.Println("status of cluster is SUCCEEDED")
-			klog.V(1).Infof("Status of cluster is SUCCEEDED")
-			break
-		}
-		isErrorStatus := utils.CheckErrorStatusCluster(domainAPI, vpcID, accessToken, clusterIDPortal)
-		if isErrorStatus == true {
-			utils.PerformScaleUp(domainAPI, vpcID, accessToken, numberNodeScaleUp, idCluster, clusterIDPortal)
-			for {
-				time.Sleep(30 * time.Second)
-				if utils.CheckStatusCluster(domainAPI, vpcID, accessToken, clusterIDPortal) == true {
-					break
-				}
+	if utils.CheckStatusCluster(domainAPI, vpcID, accessToken, clusterIDPortal) {
+		utils.PerformScaleUp(domainAPI, vpcID, accessToken, numberNodeScaleUp, idCluster, clusterIDPortal)
+		for {
+			time.Sleep(30 * time.Second)
+			isSucceededStatus := utils.CheckStatusCluster(domainAPI, vpcID, accessToken, clusterIDPortal)
+			//fmt.Println("status of cluster is SCALING")
+			klog.V(1).Infof("Status of cluster is SCALING")
+			if isSucceededStatus {
+				//fmt.Println("status of cluster is SUCCEEDED")
+				klog.V(1).Infof("Status of cluster is SUCCEEDED")
+				break
 			}
-			break
+			isErrorStatus := utils.CheckErrorStatusCluster(domainAPI, vpcID, accessToken, clusterIDPortal)
+			if isErrorStatus {
+				utils.PerformScaleUp(domainAPI, vpcID, accessToken, numberNodeScaleUp, idCluster, clusterIDPortal)
+				for {
+					time.Sleep(30 * time.Second)
+					if utils.CheckStatusCluster(domainAPI, vpcID, accessToken, clusterIDPortal) {
+						break
+					}
+				}
+				break
+			}
 		}
+	} else {
+		klog.V(1).Infof("Another action is being performed")
+		klog.V(1).Infof("Waiting for scaling ...")
+		return &status.ScaleUpStatus{
+			Result:                  status.ScaleUpNotNeeded,
+			PodsRemainUnschedulable: getRemainingPods(podEquivalenceGroups, skippedNodeGroups),
+			//ConsideredNodeGroups:    nodeGroups,
+		}, nil
 	}
+
 	//time.Sleep(3 * time.Minute)
 	//if len(expansionOptions) == 0 {
 	//	klog.V(1).Info("No expansion options")

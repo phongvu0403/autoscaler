@@ -1,13 +1,13 @@
 ALL_ARCH = amd64
 all: $(addprefix build-arch-,$(ALL_ARCH))
 
-TAG?=0.32
+TAG?=1.0
 FLAGS=
 LDFLAGS?=-s
 ENVVAR=CGO_ENABLED=0
 GOOS?=linux
 GOARCH?=$(shell go env GOARCH)
-REGISTRY?=docker.io
+REGISTRY?=registry.fke.fptcloud.com
 DOCKER_NETWORK?=default
 ifdef BUILD_TAGS
   TAGS_FLAG=--tags ${BUILD_TAGS}
@@ -24,7 +24,7 @@ ifdef DOCKER_RM
 else
   RM_FLAG=
 endif
-IMAGE=$(REGISTRY)/phongvu0403/cluster-autoscaler
+IMAGE=$(REGISTRY)/xplat-fke/cluster-autoscaler
 
 export DOCKER_CLI_EXPERIMENTAL := enabled
 
