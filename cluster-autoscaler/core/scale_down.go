@@ -18,8 +18,12 @@ package core
 
 import (
 	ctx "context"
+	"encoding/json"
 	"fmt"
+	"k8s.io/apimachinery/pkg/types"
+	"log"
 	"math"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -481,12 +485,12 @@ func (sd *ScaleDown) UpdateUnneededNodes(
 	utilizationMap := make(map[string]simulator.UtilizationInfo)
 	currentlyUnneededNodeNames := make([]string, 0, len(scaleDownCandidates))
 
-	var scaleDownCadidatesWorker int = 0
-	for _, node := range scaleDownCandidates {
-		if strings.Contains(node.Name, "worker") {
-			scaleDownCadidatesWorker += 1
-		}
-	}
+	//var scaleDownCadidatesWorker int = 0
+	//for _, node := range scaleDownCandidates {
+	//	if strings.Contains(node.Name, "worker") {
+	//		scaleDownCadidatesWorker += 1
+	//	}
+	//}
 
 	//fmt.Println()
 	//fmt.Println("number of worker scale down candidates is: ", scaleDownCadidatesWorker)
@@ -525,13 +529,13 @@ func (sd *ScaleDown) UpdateUnneededNodes(
 			continue
 		}
 
-		if strings.Contains(node.Name, "master") {
-			continue
-		}
+		//if strings.Contains(node.Name, "master") {
+		//	continue
+		//}
 
-		if (scaleDownCadidatesWorker - len(currentlyUnneededNodeNames)) <= utils.GetMinSizeNodeGroup(kubeclient) {
-			continue
-		}
+		//if (scaleDownCadidatesWorker - len(currentlyUnneededNodeNames)) <= utils.GetMinSizeNodeGroup(kubeclient) {
+		//	continue
+		//}
 
 		currentlyUnneededNodeNames = append(currentlyUnneededNodeNames, node.Name)
 
@@ -855,12 +859,9 @@ func (sd *ScaleDown) TryToScaleDown(
 	// fmt.Println()
 	// fmt.Println("nodes without master are: ")
 
-	// for _, node := range nodesWithoutMaster {
-	// 	nodesWithoutMasterNames = append(nodesWithoutMasterNames, node.Name)
-
-	// 	fmt.Println(node.Name)
-
-	// }
+	for _, node := range nodesWithoutMaster {
+		nodesWithoutMasterNames = append(nodesWithoutMasterNames, node.Name)
+	}
 
 	candidateNames := make([]string, 0)
 	//readinessMap := make(map[string]bool)
@@ -878,6 +879,13 @@ func (sd *ScaleDown) TryToScaleDown(
 
 	//nodeGroupSize := utils.GetNodeGroupSizeMap(sd.context.CloudProvider)
 	// resourcesWithLimits := resourceLimiter.GetResources()
+
+	if len(nodesWithoutMasterNames) <= utils.GetMinSizeNodeGroup(kubeclient) {
+		klog.V(4).Infof("Node group min size reached")
+		scaleDownStatus.Result = status.ScaleDownNoUnneeded
+		return scaleDownStatus, nil
+	}
+
 	for nodeName, unneededSince := range sd.unneededNodes {
 		klog.V(2).Infof("%s was unneeded for %s", nodeName, currentTime.Sub(unneededSince).String())
 		nodeInfo, err := sd.context.ClusterSnapshot.NodeInfos().Get(nodeName)
@@ -935,7 +943,7 @@ func (sd *ScaleDown) TryToScaleDown(
 		//}
 
 		//unneededTime := time.Duration(0)
-		unneededTime := 5 * time.Minute
+		unneededTime := 15 * time.Minute
 		//if err != nil {
 		//	klog.Errorf("Error trying to get ScaleDownUnneededTime for node %s (in group: %s)", node.Name, nodeGroup.Id())
 		//	continue
@@ -1078,7 +1086,16 @@ func (sd *ScaleDown) TryToScaleDown(
 	//fmt.Println("access token is: ", accessToken)
 	domainAPI := utils.GetDomainApiConformEnv(env)
 	klog.V(1).Infof("Scaling down 1 node")
+
+	var workerNameToRemove string
+	for _, nodeName := range nodesWithoutMasterNames {
+		if strings.HasSuffix(nodeName, "worker"+strconv.Itoa(len(nodesWithoutMasterNames))) {
+			workerNameToRemove = nodeName
+		}
+	}
+
 	if utils.CheckStatusCluster(domainAPI, vpcID, accessToken, clusterIDPortal) {
+		cordonWorkerNodeAndDeletePod(kubeclient, workerNameToRemove)
 		utils.PerformScaleDown(domainAPI, vpcID, accessToken, 1, idCluster, clusterIDPortal)
 		for {
 			time.Sleep(30 * time.Second)
@@ -1583,4 +1600,38 @@ func filterOutMasters(nodeInfos []*schedulerframework.NodeInfo) []*apiv1.Node {
 		}
 	}
 	return result
+}
+
+type patchStringValue struct {
+	Op    string `json:"op"`
+	Path  string `json:"path"`
+	Value bool   `json:"value"`
+}
+
+func cordonWorkerNodeAndDeletePod(kubeclient kube_client.Interface, workerName string) {
+	payload := []patchStringValue{{
+		Op:    "replace",
+		Path:  "/spec/unschedulable",
+		Value: true,
+	}}
+	payloadBytes, _ := json.Marshal(payload)
+	klog.V(1).Infof("Cordon node %s", workerName)
+	kubeclient.CoreV1().Nodes().Patch(ctx.Background(), workerName, types.JSONPatchType, payloadBytes, metav1.PatchOptions{})
+	pods, err := kubeclient.CoreV1().Pods("").List(ctx.Background(), metav1.ListOptions{})
+	if err != nil {
+		log.Fatal(err)
+	}
+	var gracePeriodSeconds int64 = 30
+	for _, pod := range pods.Items {
+		if pod.Spec.NodeName == workerName && pod.OwnerReferences[0].Kind != "DaemonSet" {
+			// for _, volume := range pod.Spec.Volumes {
+			// 	if volume.EmptyDir != nil {
+			// 		klog.V(1).Infof("Evict pod %s", pod.Name)
+			// 		// fmt.Println(pod.Name)
+			// 		kubeclient.CoreV1().Pods(pod.Namespace).Delete(ctx.Background(), pod.Name, metav1.DeleteOptions{GracePeriodSeconds: &gracePeriodSeconds})
+			// 	}
+			// }
+			kubeclient.CoreV1().Pods(pod.Namespace).Delete(ctx.Background(), pod.Name, metav1.DeleteOptions{GracePeriodSeconds: &gracePeriodSeconds})
+		}
+	}
 }

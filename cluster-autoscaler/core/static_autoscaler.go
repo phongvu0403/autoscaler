@@ -254,7 +254,7 @@ func (a *StaticAutoscaler) RunOnce(currentTime time.Time, kubeclient kube_client
 
 	domainAPI := core_utils.GetDomainApiConformEnv(env)
 	var numberWorkerNode int = 0
-	for _, node := range readyNodes {
+	for _, node := range allNodes {
 		if strings.Contains(node.Name, "worker") {
 			numberWorkerNode += 1
 		}
