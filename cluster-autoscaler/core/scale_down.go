@@ -23,7 +23,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"log"
 	"math"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -1087,15 +1086,15 @@ func (sd *ScaleDown) TryToScaleDown(
 	domainAPI := utils.GetDomainApiConformEnv(env)
 	klog.V(1).Infof("Scaling down 1 node")
 
-	var workerNameToRemove string
-	for _, nodeName := range nodesWithoutMasterNames {
-		if strings.HasSuffix(nodeName, "worker"+strconv.Itoa(len(nodesWithoutMasterNames))) {
-			workerNameToRemove = nodeName
-		}
-	}
+	//var workerNameToRemove string
+	//for _, nodeName := range nodesWithoutMasterNames {
+	//	if strings.HasSuffix(nodeName, "worker"+strconv.Itoa(len(nodesWithoutMasterNames))) {
+	//		workerNameToRemove = nodeName
+	//	}
+	//}
 
 	if utils.CheckStatusCluster(domainAPI, vpcID, accessToken, clusterIDPortal) {
-		cordonWorkerNodeAndDeletePod(kubeclient, workerNameToRemove)
+		//cordonWorkerNodeAndDeletePod(kubeclient, workerNameToRemove)
 		utils.PerformScaleDown(domainAPI, vpcID, accessToken, 1, idCluster, clusterIDPortal)
 		for {
 			time.Sleep(30 * time.Second)
