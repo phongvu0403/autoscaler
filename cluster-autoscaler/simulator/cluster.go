@@ -135,7 +135,7 @@ func FindNodesToRemove(
 		if err != nil {
 			klog.Errorf("Can't retrieve node %s from snapshot, err: %v", nodeName, err)
 		}
-		klog.V(2).Infof("%s for removal", nodeName)
+		//klog.V(2).Infof("%s for removal", nodeName)
 
 		if _, found := destinationMap[nodeName]; !found {
 			klog.V(2).Infof("nodeInfo for %s not found", nodeName)
@@ -163,7 +163,7 @@ func FindNodesToRemove(
 				PodsToReschedule: podsToRemove,
 				DaemonSetPods:    daemonSetPods,
 			})
-			klog.V(2).Infof("node %s may be removed", nodeName)
+			//klog.V(2).Infof("node %s may be removed", nodeName)
 		} else {
 			klog.V(2).Infof("node %s is not suitable for removal: %v", nodeName, findProblems)
 			unremovable = append(unremovable, &UnremovableNode{Node: nodeInfo.Node(), Reason: NoPlaceToMovePods})

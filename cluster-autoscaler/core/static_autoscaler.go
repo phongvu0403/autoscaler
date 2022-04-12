@@ -693,9 +693,9 @@ func (a *StaticAutoscaler) RunOnce(currentTime time.Time, kubeclient kube_client
 		metrics.UpdateDurationFromStart(metrics.FindUnneeded, unneededStart)
 
 		if klog.V(4).Enabled() {
-			for key, val := range scaleDown.unneededNodes {
-				klog.Infof("%s is unneeded since %s duration %s", key, val.String(), currentTime.Sub(val).String())
-			}
+			//for key, val := range scaleDown.unneededNodes {
+			//	klog.Infof("%s is unneeded since %s duration %s", key, val.String(), currentTime.Sub(val).String())
+			//}
 		}
 
 		scaleDownInCooldown := a.processorCallbacks.disableScaleDownForLoop ||

@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"log"
 	"math"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -439,11 +440,11 @@ func (sd *ScaleDown) checkNodeUtilization(timestamp time.Time, node *apiv1.Node,
 		return simulator.UnexpectedError, nil
 	}
 	if !underutilized {
-		klog.V(4).Infof("Node %s is not suitable for removal - %s utilization too big (%f)", node.Name, utilInfo.ResourceName, utilInfo.Utilization)
+		//klog.V(4).Infof("Node %s is not suitable for removal - %s utilization too big (%f)", node.Name, utilInfo.ResourceName, utilInfo.Utilization)
 		return simulator.NotUnderutilized, &utilInfo
 	}
 
-	klog.V(4).Infof("Node %s - %s utilization %f", node.Name, utilInfo.ResourceName, utilInfo.Utilization)
+	//klog.V(4).Infof("Node %s - %s utilization %f", node.Name, utilInfo.ResourceName, utilInfo.Utilization)
 
 	return simulator.NoReason, &utilInfo
 }
@@ -886,7 +887,7 @@ func (sd *ScaleDown) TryToScaleDown(
 	}
 
 	for nodeName, unneededSince := range sd.unneededNodes {
-		klog.V(2).Infof("%s was unneeded for %s", nodeName, currentTime.Sub(unneededSince).String())
+		//klog.V(2).Infof("%s was unneeded for %s", nodeName, currentTime.Sub(unneededSince).String())
 		nodeInfo, err := sd.context.ClusterSnapshot.NodeInfos().Get(nodeName)
 		if err != nil {
 			klog.Errorf("Can't retrieve unneeded node %s from snapshot, err: %v", nodeName, err)
@@ -942,7 +943,7 @@ func (sd *ScaleDown) TryToScaleDown(
 		//}
 
 		//unneededTime := time.Duration(0)
-		unneededTime := 15 * time.Minute
+		unneededTime := 1 * time.Minute
 		//if err != nil {
 		//	klog.Errorf("Error trying to get ScaleDownUnneededTime for node %s (in group: %s)", node.Name, nodeGroup.Id())
 		//	continue
@@ -1083,15 +1084,21 @@ func (sd *ScaleDown) TryToScaleDown(
 	//fmt.Println("Wait for running in AWX successfully")
 	//fmt.Println("vpcID is: ", vpcID)
 	//fmt.Println("access token is: ", accessToken)
-	domainAPI := utils.GetDomainApiConformEnv(env)
-	klog.V(1).Infof("Scaling down 1 node")
 
-	//var workerNameToRemove string
-	//for _, nodeName := range nodesWithoutMasterNames {
-	//	if strings.HasSuffix(nodeName, "worker"+strconv.Itoa(len(nodesWithoutMasterNames))) {
-	//		workerNameToRemove = nodeName
-	//	}
-	//}
+	var workerNameToRemove string
+	for _, nodeName := range nodesWithoutMasterNames {
+		if strings.HasSuffix(nodeName, "worker"+strconv.Itoa(len(nodesWithoutMasterNames))) {
+			workerNameToRemove = nodeName
+		}
+	}
+	klog.V(1).Infof("Scaling down node %s", workerNameToRemove)
+	if !checkWorkerNodeCanBeScaleDown(kubeclient, workerNameToRemove) {
+		klog.V(1).Infof("Cannot perform scale down action")
+		scaleDownStatus.Result = status.ScaleDownNoUnneeded
+		return scaleDownStatus, nil
+	}
+
+	domainAPI := utils.GetDomainApiConformEnv(env)
 
 	if utils.CheckStatusCluster(domainAPI, vpcID, accessToken, clusterIDPortal) {
 		//cordonWorkerNodeAndDeletePod(kubeclient, workerNameToRemove)
@@ -1633,4 +1640,35 @@ func cordonWorkerNodeAndDeletePod(kubeclient kube_client.Interface, workerName s
 			kubeclient.CoreV1().Pods(pod.Namespace).Delete(ctx.Background(), pod.Name, metav1.DeleteOptions{GracePeriodSeconds: &gracePeriodSeconds})
 		}
 	}
+}
+
+func checkWorkerNodeCanBeScaleDown(kubeclient kube_client.Interface, workerNodeName string) bool {
+	var canBeRemove bool = true
+	pods, err := kubeclient.CoreV1().Pods("").List(ctx.Background(), metav1.ListOptions{})
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, pod := range pods.Items {
+		if pod.Spec.NodeName == workerNodeName && pod.OwnerReferences[0].Kind != "DaemonSet" {
+			replicaset, err := kubeclient.AppsV1().ReplicaSets(pod.Namespace).Get(ctx.Background(),
+				pod.OwnerReferences[0].Name, metav1.GetOptions{})
+			if err != nil {
+				log.Fatal(err)
+			}
+			if replicaset.Status.Replicas == 1 {
+				klog.V(1).Infof("If you want to scale down, you should evict pod %s in namespace %s "+
+					"because your replicaset %s has only one replica", pod.Name, pod.Namespace,
+					replicaset.Name)
+				canBeRemove = false
+			}
+			for _, volume := range pod.Spec.Volumes {
+				if volume.EmptyDir != nil {
+					klog.V(1).Infof("If you want to scale down, you should evict pod %s"+
+						" in namespace %s because pod has local storage", pod.Name, pod.Namespace)
+					canBeRemove = false
+				}
+			}
+		}
+	}
+	return canBeRemove
 }
