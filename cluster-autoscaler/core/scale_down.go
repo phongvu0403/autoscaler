@@ -943,7 +943,7 @@ func (sd *ScaleDown) TryToScaleDown(
 		//}
 
 		//unneededTime := time.Duration(0)
-		unneededTime := 1 * time.Minute
+		unneededTime := 15 * time.Minute
 		//if err != nil {
 		//	klog.Errorf("Error trying to get ScaleDownUnneededTime for node %s (in group: %s)", node.Name, nodeGroup.Id())
 		//	continue
@@ -1650,11 +1650,11 @@ func checkWorkerNodeCanBeScaleDown(kubeclient kube_client.Interface, workerNodeN
 	}
 	for _, pod := range pods.Items {
 		if pod.Spec.NodeName == workerNodeName && pod.OwnerReferences[0].Kind != "DaemonSet" {
-			replicaset, err := kubeclient.AppsV1().ReplicaSets(pod.Namespace).Get(ctx.Background(),
+			replicaset, _ := kubeclient.AppsV1().ReplicaSets(pod.Namespace).Get(ctx.Background(),
 				pod.OwnerReferences[0].Name, metav1.GetOptions{})
-			if err != nil {
-				log.Fatal(err)
-			}
+			//if err != nil {
+			//	log.Fatal(err)
+			//}
 			if replicaset.Status.Replicas == 1 {
 				klog.V(1).Infof("If you want to scale down, you should evict pod %s in namespace %s "+
 					"because your replicaset %s has only one replica", pod.Name, pod.Namespace,

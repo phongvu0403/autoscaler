@@ -17,7 +17,11 @@ limitations under the License.
 package core
 
 import (
+	ctx "context"
 	"fmt"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -216,7 +220,8 @@ func (a *StaticAutoscaler) initializeClusterSnapshot(nodes []*apiv1.Node, schedu
 }
 
 // RunOnce iterates over node groups and scales them up/down if necessary
-func (a *StaticAutoscaler) RunOnce(currentTime time.Time, kubeclient kube_client.Interface, vpcID string, accessToken string, idCluster string, clusterIDPortal string, env string) errors.AutoscalerError {
+func (a *StaticAutoscaler) RunOnce(currentTime time.Time, kubeclient kube_client.Interface, vpcID string,
+	accessToken string, idCluster string, clusterIDPortal string, env string) errors.AutoscalerError {
 	a.cleanUpIfRequired()
 	a.processorCallbacks.reset()
 	a.clusterStateRegistry.PeriodicCleanup()
@@ -253,12 +258,15 @@ func (a *StaticAutoscaler) RunOnce(currentTime time.Time, kubeclient kube_client
 	allNodes, readyNodes, typedErr := a.obtainNodeLists()
 
 	domainAPI := core_utils.GetDomainApiConformEnv(env)
-	var numberWorkerNode int = 0
+
+	workerNodeNameList := make([]string, 0, len(allNodes))
 	for _, node := range allNodes {
 		if strings.Contains(node.Name, "worker") {
-			numberWorkerNode += 1
+			workerNodeNameList = append(workerNodeNameList, node.Name)
 		}
 	}
+	numberWorkerNode := len(workerNodeNameList)
+	var workerNameToRemove string
 
 	if numberWorkerNode < core_utils.GetMinSizeNodeGroup(kubeclient) {
 		workerCountNeedToScaledUp := core_utils.GetMinSizeNodeGroup(kubeclient) - numberWorkerNode
@@ -290,11 +298,21 @@ func (a *StaticAutoscaler) RunOnce(currentTime time.Time, kubeclient kube_client
 			}
 		}
 	} else if numberWorkerNode > core_utils.GetMaxSizeNodeGroup(kubeclient) {
+		for _, nodeName := range workerNodeNameList {
+			if strings.HasSuffix(nodeName, "worker"+strconv.Itoa(len(workerNodeNameList))) {
+				workerNameToRemove = nodeName
+			}
+		}
 		workerCountNeedToScaledDown := numberWorkerNode - core_utils.GetMaxSizeNodeGroup(kubeclient)
 		klog.V(1).Infof("Current worker nodes are greater than max node group")
 		klog.V(1).Infof("Scaling down %v node", workerCountNeedToScaledDown)
 		//fmt.Println("current worker nodes are greater than max node group")
 		//fmt.Println("scaling down ", workerCountNeedToScaledDown, " node")
+		klog.V(1).Infof("Scaling down node %s", workerNameToRemove)
+		if !checkWorkerNodeCanBeRemove(kubeclient, workerNameToRemove) {
+			klog.V(1).Infof("Cannot perform scale down action")
+			return nil
+		}
 		core_utils.PerformScaleDown(domainAPI, vpcID, accessToken, workerCountNeedToScaledDown, idCluster, clusterIDPortal)
 		for {
 			time.Sleep(30 * time.Second)
@@ -1010,4 +1028,35 @@ func calculateCoresMemoryTotal(nodes []*apiv1.Node, timestamp time.Time) (int64,
 	}
 
 	return coresTotal, memoryTotal
+}
+
+func checkWorkerNodeCanBeRemove(kubeclient kube_client.Interface, workerNodeName string) bool {
+	var canBeRemove bool = true
+	pods, err := kubeclient.CoreV1().Pods("").List(ctx.Background(), metav1.ListOptions{})
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, pod := range pods.Items {
+		if pod.Spec.NodeName == workerNodeName && pod.OwnerReferences[0].Kind != "DaemonSet" {
+			replicaset, _ := kubeclient.AppsV1().ReplicaSets(pod.Namespace).Get(ctx.Background(),
+				pod.OwnerReferences[0].Name, metav1.GetOptions{})
+			//if err != nil {
+			//	log.Fatal(err)
+			//}
+			if replicaset.Status.Replicas == 1 {
+				klog.V(1).Infof("If you want to scale down, you should evict pod %s in namespace %s "+
+					"because your replicaset %s has only one replica", pod.Name, pod.Namespace,
+					replicaset.Name)
+				canBeRemove = false
+			}
+			for _, volume := range pod.Spec.Volumes {
+				if volume.EmptyDir != nil {
+					klog.V(1).Infof("If you want to scale down, you should evict pod %s"+
+						" in namespace %s because pod has local storage", pod.Name, pod.Namespace)
+					canBeRemove = false
+				}
+			}
+		}
+	}
+	return canBeRemove
 }
